@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Preserve the reference shipping label or replace selected printed fields.">
+    <title>Shipping Label Copy &amp; Editor</title>
+    <link rel="stylesheet" href="src/styles.css">
+  </head>
+  <body>
+    <main class="app">
+      <aside class="editor-panel" aria-labelledby="editor-title">
+        <header class="panel-header">
+          <p class="eyebrow">J&amp;T shipping label</p>
+          <h1 id="editor-title">Copy or edit</h1>
+          <p class="intro">The untouched export is the original PDF. Select only the printed fields you want to replace.</p>
+        </header>
+
+        <form id="editor-form">
+          <div id="field-list" class="field-list"></div>
+          <div class="barcode-note">
+            The source ID reads JEG000547344825 (JEG, not JEQ). Both Code 128 barcodes encode that same ID; replacing it updates the printed ID and both barcodes.
+          </div>
+          <button type="button" id="export-pdf" class="export-button" disabled>Loading reference…</button>
+        </form>
+
+        <p id="status" class="status" role="status" aria-live="polite">Loading the reference PDF…</p>
+      </aside>
+
+      <section class="preview-panel" aria-label="Label preview">
+        <div class="preview-heading">
+          <h2>Preview</h2>
+          <p>Original artwork stays fixed; checked fields are replacements.</p>
+        </div>
+        <div class="preview-scroll">
+          <div class="label-frame">
+            <canvas id="label-canvas" width="895" height="1537" aria-label="Shipping label preview"></canvas>
+          </div>
+        </div>
+        <p class="page-info">Reference page: 215 × 369 pt · 75.847 × 130.175 mm</p>
+      </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script type="module" src="src/app.js"></script>
+  </body>
+</html>
