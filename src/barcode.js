@@ -15,6 +15,55 @@ const CODE128_PATTERNS = [
   "211214", "211232", "2331112",
 ];
 
+const CODE39_PATTERNS = {
+  "0": "nnnwwnwnn",
+  "1": "wnnwnnnnw",
+  "2": "nnwwnnnnw",
+  "3": "wnwwnnnnn",
+  "4": "nnnwwnnnw",
+  "5": "wnnwwnnnn",
+  "6": "nnwwwnnnn",
+  "7": "nnnwnnwnw",
+  "8": "wnnwnnwnn",
+  "9": "nnwwnnwnn",
+  A: "wnnnnwnnw",
+  B: "nnwnnwnnw",
+  C: "wnwnnwnnn",
+  D: "nnnnwwnnw",
+  E: "wnnnwwnnn",
+  F: "nnwnwwnnn",
+  G: "nnnnnwwnw",
+  H: "wnnnnwwnn",
+  I: "nnwnnwwnn",
+  J: "nnnnwwwnn",
+  K: "wnnnnnnww",
+  L: "nnwnnnnww",
+  M: "wnwnnnnwn",
+  N: "nnnnwnnww",
+  O: "wnnnwnnwn",
+  P: "nnwnwnnwn",
+  Q: "nnnnnnwww",
+  R: "wnnnnnwwn",
+  S: "nnwnnnwwn",
+  T: "nnnnwnwwn",
+  U: "wwnnnnnnw",
+  V: "nwwnnnnnw",
+  W: "wwwnnnnnn",
+  X: "nwnnwnnnw",
+  Y: "wwnnwnnnn",
+  Z: "nwwnwnnnn",
+  "-": "nwnnnnwnw",
+  ".": "wwnnnnwnn",
+  " ": "nwwnnnwnn",
+  "$": "nwnwnwnnn",
+  "/": "nwnwnnnwn",
+  "+": "nwnnnwnwn",
+  "%": "nnnwnwnwn",
+  "*": "nwnnwnwnn",
+};
+
+const CODE39_ALLOWED = /^[0-9A-Z .\-$\/+%]+$/;
+
 function addChecksumAndStop(dataWords) {
   const checksum = dataWords.reduce(
     (sum, value, index) => sum + (index === 0 ? value : index * value),
@@ -81,5 +130,28 @@ export function code128Runs(symbols) {
       width: Number(width),
       bar: index % 2 === 0,
     }));
+  });
+}
+
+export function encodeCode39(value) {
+  if (!CODE39_ALLOWED.test(value)) {
+    throw new Error("The invoice number contains a character unsupported by Code 39.");
+  }
+
+  const characters = `*${value}*`;
+  return [...characters].flatMap((character, characterIndex) => {
+    const pattern = CODE39_PATTERNS[character];
+    if (!pattern) {
+      throw new Error(`Missing Code 39 pattern for character ${character}.`);
+    }
+
+    const runs = [...pattern].map((width, index) => ({
+      width: width === "w" ? 3 : 1,
+      bar: index % 2 === 0,
+    }));
+    if (characterIndex < characters.length - 1) {
+      runs.push({ width: 1, bar: false });
+    }
+    return runs;
   });
 }

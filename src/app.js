@@ -1,4 +1,36 @@
 import { code128Runs, encodeCode128A, encodeCode128BWithNumericCompression } from "./barcode.js";
+import {
+  INVOICE_DEFAULT_DATA,
+  INVOICE_PAGE,
+  calculateInvoice,
+  createInvoiceControls,
+  createInvoiceData,
+  invoiceHasChanges,
+  renderInvoicePage,
+  setInvoiceValue,
+  validateInvoice,
+} from "./invoice.js";
+import {
+  SA_RECEIPT_PAGE,
+  createSaReceiptControls,
+  createSaReceiptData,
+  renderSaReceiptPage,
+  renderSaReceiptPdfPage,
+  setSaReceiptQrVector,
+  setSaReceiptValue,
+  validateSaReceiptLayout,
+} from "./sa-receipt.js?v=33";
+import {
+  removeTaxInvoiceWatermark,
+  createTaxInvoiceControls,
+  createTaxInvoiceData,
+  renderTaxInvoiceOverlay,
+  renderTaxInvoicePage,
+  setTaxInvoiceValue,
+  taxInvoiceHasChanges,
+  verifyTaxInvoiceOverlay,
+  TAX_INVOICE_PAGE,
+} from "./tax-invoice.js?v=20";
 
 const PAGE = { widthPt: 215, heightPt: 369, widthPx: 895, heightPx: 1537 };
 const FIELD_DEFINITIONS = [
@@ -200,12 +232,57 @@ const fieldList = document.getElementById("field-list");
 const exportButton = document.getElementById("export-pdf");
 const statusMessage = document.getElementById("status");
 const form = document.getElementById("editor-form");
+const invoiceForm = document.getElementById("invoice-form");
+const invoiceFieldList = document.getElementById("invoice-field-list");
+const invoiceAvailability = document.getElementById("invoice-availability");
+const invoiceEditorPanel = document.getElementById("invoice-editor-panel");
+const shippingEditorPanel = document.getElementById("shipping-editor-panel");
+const labelPreview = document.getElementById("label-preview");
+const invoicePreview = document.getElementById("invoice-preview");
+const saForm = document.getElementById("sa-form");
+const taxInvoiceForm = document.getElementById("tax-invoice-form");
+const taxInvoiceFieldList = document.getElementById("tax-invoice-field-list");
+const taxInvoiceAvailability = document.getElementById("tax-invoice-availability");
+const taxInvoiceEditorPanel = document.getElementById("tax-invoice-editor-panel");
+const taxInvoicePreview = document.getElementById("tax-invoice-preview");
+const taxInvoiceCanvas = document.getElementById("tax-invoice-canvas");
+const taxInvoiceContext = taxInvoiceCanvas.getContext("2d");
+const saFieldList = document.getElementById("sa-field-list");
+const saAvailability = document.getElementById("sa-availability");
+const saEditorPanel = document.getElementById("sa-editor-panel");
+const saPreview = document.getElementById("sa-preview");
+const previewDescription = document.getElementById("preview-description");
+const pageInfo = document.getElementById("page-info");
+const modeControls = [...document.querySelectorAll('input[name="document-mode"]')];
+const invoiceCanvases = [
+  document.getElementById("invoice-canvas-1"),
+  document.getElementById("invoice-canvas-2"),
+];
+const invoiceContexts = invoiceCanvases.map((invoiceCanvas) => invoiceCanvas.getContext("2d"));
+const saCanvas = document.getElementById("sa-canvas");
+const saContext = saCanvas.getContext("2d", { willReadFrequently: true });
 const replacementData = Object.fromEntries(
   FIELD_DEFINITIONS.map(({ id, defaultValue = "" }) => [id, { enabled: false, value: defaultValue }])
 );
+const invoiceData = createInvoiceData();
+const saReceiptData = createSaReceiptData();
+const taxInvoiceData = createTaxInvoiceData();
 
 let originalPdfBytes;
 let referenceImage;
+let invoicePdfBytes;
+let invoiceImages = [];
+let invoiceSourceCalculations;
+let saReceiptPdfBytes;
+let saReceiptImage;
+let saReceiptFontBytes;
+let taxInvoicePdfBytes;
+let taxInvoiceImage;
+let taxInvoiceWatermarkMask;
+let documentMode = "shipping";
+let invoiceLoadError;
+let saReceiptLoadError;
+let taxInvoiceLoadError;
 
 function createFieldControls() {
   for (const field of FIELD_DEFINITIONS) {
@@ -292,6 +369,19 @@ function setStatus(message, state = "ready") {
 }
 
 function updateControls() {
+  if (documentMode === "invoice") {
+    updateInvoiceControls();
+    return;
+  }
+  if (documentMode === "sa-receipt") {
+    updateSaReceiptControls();
+    return;
+  }
+  if (documentMode === "tax-invoice-ref") {
+    updateTaxInvoiceControls();
+    return;
+  }
+
   syncReplacementData();
   for (const toggle of fieldList.querySelectorAll("[data-replace]")) {
     const control = fieldList.querySelector(`[data-field="${toggle.dataset.replace}"]`);
@@ -312,6 +402,137 @@ function updateControls() {
     );
   }
   renderPreview();
+}
+
+function syncInvoiceDataFromControls() {
+  for (const control of invoiceFieldList.querySelectorAll("[data-invoice-path]")) {
+    setInvoiceValue(invoiceData, control.dataset.invoicePath, control.value);
+  }
+}
+
+function renderInvoicePreview(calculations) {
+  if (invoiceImages.length !== 2 || !invoiceSourceCalculations) return;
+
+  invoiceContexts.forEach((invoiceContext, index) => {
+    if (!calculations) {
+      invoiceContext.clearRect(0, 0, INVOICE_PAGE.widthPx, INVOICE_PAGE.heightPx);
+      invoiceContext.drawImage(invoiceImages[index], 0, 0, INVOICE_PAGE.widthPx, INVOICE_PAGE.heightPx);
+      return;
+    }
+
+    renderInvoicePage(
+      invoiceContext,
+      invoiceImages[index],
+      invoiceData,
+      calculations,
+      invoiceSourceCalculations,
+      index + 1
+    );
+  });
+}
+
+function updateInvoiceControls() {
+  syncInvoiceDataFromControls();
+  const validation = validateInvoice(invoiceData);
+  const edited = invoiceHasChanges(invoiceData);
+  renderInvoicePreview(validation.calculations);
+
+  exportButton.textContent = edited ? "Export edited tax invoice PDF" : "Export exact tax invoice PDF";
+  exportButton.disabled = !invoicePdfBytes || validation.errors.length > 0;
+  if (validation.errors.length > 0) {
+    setStatus(validation.errors[0], "error");
+  } else {
+    setStatus(
+      edited
+        ? "Invoice edits and calculated totals are shown on both pages."
+        : "No invoice edits. Export will be the original two-page PDF."
+    );
+  }
+}
+
+function syncSaReceiptDataFromControls() {
+  for (const control of saFieldList.querySelectorAll("[data-sa-path]")) {
+    setSaReceiptValue(saReceiptData, control.dataset.saPath, control.value);
+  }
+}
+
+function syncTaxInvoiceDataFromControls() {
+  for (const control of taxInvoiceFieldList.querySelectorAll("[data-tax-invoice-path]")) {
+    setTaxInvoiceValue(taxInvoiceData, control.dataset.taxInvoicePath, control.value);
+  }
+}
+
+function renderSaReceiptPreview() {
+  if (!saReceiptImage) return;
+  renderSaReceiptPage(saContext, saReceiptData);
+}
+
+function renderTaxInvoicePreview() {
+  if (!taxInvoiceImage) return;
+  renderTaxInvoicePage(taxInvoiceContext, taxInvoiceImage, taxInvoiceData, taxInvoiceWatermarkMask);
+}
+
+function updateSaReceiptControls() {
+  syncSaReceiptDataFromControls();
+  const validation = validateSaReceiptLayout(saContext, saReceiptData);
+  renderSaReceiptPreview();
+
+  exportButton.textContent = "Export digital S&A receipt PDF";
+  exportButton.disabled = !saReceiptPdfBytes || !saReceiptImage || validation.errors.length > 0;
+  if (validation.errors.length > 0) {
+    setStatus(validation.errors[0], "error");
+  } else {
+    setStatus("Digital vector receipt preview. Values keep fixed type sizes; overflow blocks export.");
+  }
+}
+
+function updateTaxInvoiceControls() {
+  syncTaxInvoiceDataFromControls();
+  const edited = taxInvoiceHasChanges(taxInvoiceData);
+  renderTaxInvoicePreview();
+  exportButton.textContent = edited ? "Export edited invoice without watermark" : "Export invoice without watermark";
+  exportButton.disabled = !taxInvoicePdfBytes;
+  setStatus(edited
+    ? "Invoice values are overlaid in fixed positions. The watermark is removed; the QR code remains unchanged."
+    : "The watermark is removed in the preview and exported PDF. The QR code remains unchanged.");
+}
+
+function setDocumentMode(mode) {
+  documentMode = mode;
+  const invoiceMode = mode === "invoice";
+  const saReceiptMode = mode === "sa-receipt";
+  const taxInvoiceMode = mode === "tax-invoice-ref";
+  const shippingMode = !invoiceMode && !saReceiptMode && !taxInvoiceMode;
+  shippingEditorPanel.hidden = !shippingMode;
+  invoiceEditorPanel.hidden = !invoiceMode;
+  saEditorPanel.hidden = !saReceiptMode;
+  taxInvoiceEditorPanel.hidden = !taxInvoiceMode;
+  labelPreview.hidden = !shippingMode;
+  invoicePreview.hidden = !invoiceMode;
+  saPreview.hidden = !saReceiptMode;
+  taxInvoicePreview.hidden = !taxInvoiceMode;
+  previewDescription.textContent = taxInvoiceMode
+    ? "The source invoice layout and QR stay fixed; edited values are overlaid in place."
+    : invoiceMode
+      ? "The supplied A4 artwork is preserved; edited values are overlaid in place."
+      : saReceiptMode
+      ? "A digital redraw follows the reference's measured layout, text sizes, and fixed receipt artwork."
+      : "Original artwork stays fixed; checked fields are replacements.";
+  pageInfo.textContent = taxInvoiceMode
+    ? "Reference page: 596 × 842 pt · one portrait A4-sized page"
+    : invoiceMode
+      ? "Reference: 2 portrait A4 pages · 595.28 × 841.89 pt each"
+      : saReceiptMode
+      ? "Digital receipt: 1 portrait page · 595 × 842 pt · fixed-size vector text and rules"
+      : "Reference page: 215 × 369 pt · 75.847 × 130.175 mm";
+  document.querySelector(".eyebrow").textContent = taxInvoiceMode
+    ? "Electronic tax invoice"
+    : invoiceMode
+      ? "Carrefour Egypt tax invoice"
+      : saReceiptMode
+      ? "S&A receipt"
+      : "J&T shipping label";
+  updateControls();
 }
 
 function fontFor(field, size = field.fontSize) {
@@ -526,10 +747,185 @@ async function exportEditedPdf() {
   return pdf.save();
 }
 
+async function exportEditedInvoicePdf() {
+  if (!window.PDFLib?.PDFDocument) {
+    throw new Error("The PDF editing library did not load. Check the connection and try again.");
+  }
+  if (!invoicePdfBytes) {
+    throw new Error("The invoice reference PDF is not available.");
+  }
+
+  renderInvoicePreview(validateInvoice(invoiceData).calculations);
+  const overlayBytes = await Promise.all(invoiceCanvases.map((invoiceCanvas) => new Promise((resolve, reject) => {
+    invoiceCanvas.toBlob((blob) => {
+      if (blob) resolve(blob.arrayBuffer());
+      else reject(new Error("Could not encode an edited invoice page as PNG."));
+    }, "image/png");
+  })));
+  const pdf = await window.PDFLib.PDFDocument.load(new Uint8Array(invoicePdfBytes));
+  const pages = pdf.getPages();
+  if (pages.length !== 2) {
+    throw new Error(`The invoice reference has ${pages.length} pages; expected 2.`);
+  }
+
+  for (const [index, page] of pages.entries()) {
+    const { width, height } = page.getSize();
+    if (Math.abs(width - INVOICE_PAGE.widthPt) > 0.02 || Math.abs(height - INVOICE_PAGE.heightPt) > 0.02) {
+      throw new Error(`Invoice page ${index + 1} is ${width} × ${height} pt; expected 595.28 × 841.89 pt.`);
+    }
+
+    const overlay = await pdf.embedPng(new Uint8Array(overlayBytes[index]));
+    page.drawImage(overlay, {
+      x: 0,
+      y: 0,
+      width: INVOICE_PAGE.widthPt,
+      height: INVOICE_PAGE.heightPt,
+    });
+  }
+
+  return pdf.save();
+}
+
+async function exportEditedSaReceiptPdf() {
+  if (!saReceiptPdfBytes || !saReceiptImage || !saReceiptFontBytes || !saReceiptFontBytes.latinRegular) {
+    throw new Error("The digital S&A receipt resources are not available.");
+  }
+  if (!window.PDFLib?.PDFDocument || !window.fontkit) {
+    throw new Error("The PDF vector font tools did not load.");
+  }
+  const pdf = await window.PDFLib.PDFDocument.create();
+  pdf.registerFontkit(window.fontkit);
+  const regular = await pdf.embedFont(saReceiptFontBytes.regular, { subset: false });
+  const bold = await pdf.embedFont(saReceiptFontBytes.bold, { subset: false });
+  const latinRegular = await pdf.embedFont(saReceiptFontBytes.latinRegular, { subset: false });
+  const latinBold = await pdf.embedFont(saReceiptFontBytes.latinBold, { subset: false });
+  const page = pdf.addPage([SA_RECEIPT_PAGE.widthPt, SA_RECEIPT_PAGE.heightPt]);
+  renderSaReceiptPdfPage(page, { regular, bold, latinRegular, latinBold }, saReceiptData);
+  const outputBytes = await pdf.save();
+  const checkPdf = await window.PDFLib.PDFDocument.load(outputBytes);
+  const checkPages = checkPdf.getPages();
+  const outputSize = checkPages[0]?.getSize();
+  if (
+    checkPages.length !== 1
+    || Math.abs(outputSize.width - SA_RECEIPT_PAGE.widthPt) > 0.02
+    || Math.abs(outputSize.height - SA_RECEIPT_PAGE.heightPt) > 0.02
+  ) {
+    throw new Error("The edited S&A receipt failed its one-page 595 × 842 pt output check.");
+  }
+  return outputBytes;
+}
+
+async function exportEditedTaxInvoicePdf() {
+  if (!window.PDFLib?.PDFDocument) {
+    throw new Error("The PDF editing library did not load. Check the connection and try again.");
+  }
+  if (!taxInvoicePdfBytes || !taxInvoiceImage) {
+    throw new Error("The tax invoice reference is not available.");
+  }
+
+  const overlayCanvas = document.createElement("canvas");
+  overlayCanvas.width = TAX_INVOICE_PAGE.widthPx;
+  overlayCanvas.height = TAX_INVOICE_PAGE.heightPx;
+  const overlayContext = overlayCanvas.getContext("2d", { willReadFrequently: true });
+  renderTaxInvoiceOverlay(overlayContext, taxInvoiceData, taxInvoiceWatermarkMask);
+  verifyTaxInvoiceOverlay(overlayContext);
+  const pageCanvas = document.createElement("canvas");
+  pageCanvas.width = TAX_INVOICE_PAGE.widthPx;
+  pageCanvas.height = TAX_INVOICE_PAGE.heightPx;
+  const pageContext = pageCanvas.getContext("2d");
+  renderTaxInvoicePage(pageContext, taxInvoiceImage, taxInvoiceData, taxInvoiceWatermarkMask);
+  const pageBlob = await new Promise((resolve, reject) => {
+    pageCanvas.toBlob((blob) => {
+      if (blob) resolve(blob);
+      else reject(new Error("Could not encode the completed invoice page as a PNG."));
+    }, "image/png");
+  });
+  const pageBytes = new Uint8Array(await pageBlob.arrayBuffer());
+  let sourcePdf;
+  try {
+    sourcePdf = await window.PDFLib.PDFDocument.load(
+      new Uint8Array(taxInvoicePdfBytes),
+      { ignoreEncryption: true }
+    );
+  } catch (error) {
+    throw new Error(`The restricted source PDF could not be opened for edits: ${error.message}`);
+  }
+
+  const pages = sourcePdf.getPages();
+  if (pages.length !== 1) {
+    throw new Error(`The invoice reference has ${pages.length} pages; expected 1.`);
+  }
+  const { width, height } = pages[0].getSize();
+  if (Math.abs(width - TAX_INVOICE_PAGE.widthPt) > 0.05 || Math.abs(height - TAX_INVOICE_PAGE.heightPt) > 0.05) {
+    throw new Error(`Invoice page is ${width} × ${height} pt; expected 596 × 842 pt.`);
+  }
+
+  const outputPdf = await window.PDFLib.PDFDocument.create();
+  const outputPage = outputPdf.addPage([width, height]);
+  const completedPage = await outputPdf.embedPng(pageBytes);
+  outputPage.drawImage(completedPage, {
+    x: 0,
+    y: 0,
+    width,
+    height,
+  });
+  const outputBytes = await outputPdf.save();
+  const checkPdf = await window.PDFLib.PDFDocument.load(outputBytes, { ignoreEncryption: true });
+  const checkPages = checkPdf.getPages();
+  const outputSize = checkPages[0]?.getSize();
+  if (
+    checkPages.length !== 1
+    || Math.abs(outputSize.width - TAX_INVOICE_PAGE.widthPt) > 0.05
+    || Math.abs(outputSize.height - TAX_INVOICE_PAGE.heightPt) > 0.05
+  ) {
+    throw new Error("The edited invoice failed its one-page 596 × 842 pt output check.");
+  }
+  return outputBytes;
+}
+
 async function handleExport() {
   exportButton.disabled = true;
+  const activeForm = documentMode === "invoice"
+    ? invoiceForm
+    : documentMode === "sa-receipt"
+      ? saForm
+      : documentMode === "tax-invoice-ref"
+        ? taxInvoiceForm
+        : null;
+  activeForm?.querySelectorAll("input, textarea").forEach((control) => {
+    control.disabled = true;
+  });
   try {
-    if (isEdited()) {
+    if (documentMode === "tax-invoice-ref") {
+      setStatus("Building the invoice PDF without its watermark…");
+      const editedBytes = await exportEditedTaxInvoicePdf();
+      downloadPdf(editedBytes, "tax-invoice-no-watermark.pdf");
+      setStatus("Invoice exported without the watermark. The source QR remains unchanged.");
+    } else if (documentMode === "invoice") {
+      const validation = validateInvoice(invoiceData);
+      if (validation.errors.length > 0) {
+        throw new Error(validation.errors[0]);
+      }
+
+      if (invoiceHasChanges(invoiceData)) {
+        setStatus("Building the edited two-page tax invoice…");
+        const editedBytes = await exportEditedInvoicePdf();
+        downloadPdf(editedBytes, "carrefour-tax-invoice-edited.pdf");
+        setStatus("Edited two-page tax invoice exported with recalculated totals and barcodes.");
+      } else {
+        downloadPdf(invoicePdfBytes.slice(0), "carrefour-tax-invoice.pdf");
+        setStatus("Original two-page tax invoice exported unchanged.");
+      }
+    } else if (documentMode === "sa-receipt") {
+      const validation = validateSaReceiptLayout(saContext, saReceiptData);
+      if (validation.errors.length > 0) {
+        throw new Error(validation.errors[0]);
+      }
+      setStatus("Drawing the fully digital S&A receipt PDF…");
+      const digitalBytes = await exportEditedSaReceiptPdf();
+      downloadPdf(digitalBytes, "sa-and-a-receipt-digital.pdf");
+      setStatus("Fully digital S&A receipt exported at 595 × 842 pt.");
+    } else if (isEdited()) {
       setStatus("Building the edited PDF…");
       const editedBytes = await exportEditedPdf();
       downloadPdf(editedBytes, "shipping-label-edited.pdf");
@@ -542,7 +938,22 @@ async function handleExport() {
     console.error("PDF export failed:", error);
     setStatus(error instanceof Error ? error.message : "PDF export failed.", "error");
   } finally {
-    exportButton.disabled = !isPoliceIdValid();
+    invoiceForm.querySelectorAll("input, textarea").forEach((control) => {
+      control.disabled = false;
+    });
+    saForm.querySelectorAll("input, textarea").forEach((control) => {
+      control.disabled = false;
+    });
+    taxInvoiceForm.querySelectorAll("input, textarea").forEach((control) => {
+      control.disabled = false;
+    });
+    exportButton.disabled = documentMode === "tax-invoice-ref"
+      ? !taxInvoicePdfBytes
+      : documentMode === "invoice"
+        ? !invoicePdfBytes || validateInvoice(invoiceData).errors.length > 0
+        : documentMode === "sa-receipt"
+        ? !saReceiptPdfBytes || !saReceiptImage || validateSaReceiptLayout(saContext, saReceiptData).errors.length > 0
+        : !originalPdfBytes || !isPoliceIdValid();
   }
 }
 
@@ -568,16 +979,183 @@ async function loadReference() {
   }
 }
 
+function loadImage(path, label) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error(`Could not load ${label}.`));
+    image.src = path;
+  });
+}
+
+async function loadInvoiceReference() {
+  const [pdfResponse, pageOne, pageTwo] = await Promise.all([
+    fetch("reference/invoice-reference.pdf"),
+    loadImage("assets/invoice-page-1.jpg", "invoice page 1 artwork"),
+    loadImage("assets/invoice-page-2.jpg", "invoice page 2 artwork"),
+  ]);
+  if (!pdfResponse.ok) {
+    throw new Error(`Could not load the invoice reference PDF (${pdfResponse.status}).`);
+  }
+
+  const images = [pageOne, pageTwo];
+  for (const [index, image] of images.entries()) {
+    if (image.naturalWidth !== INVOICE_PAGE.widthPx || image.naturalHeight !== INVOICE_PAGE.heightPx) {
+      throw new Error(
+        `Invoice page ${index + 1} artwork is ${image.naturalWidth} × ${image.naturalHeight}; expected 2381 × 3367.`
+      );
+    }
+  }
+
+  const sourceCalculations = calculateInvoice(INVOICE_DEFAULT_DATA);
+  if (sourceCalculations.errors.length > 0) {
+    throw new Error(`Invoice source values are invalid: ${sourceCalculations.errors[0]}`);
+  }
+
+  invoicePdfBytes = await pdfResponse.arrayBuffer();
+  invoiceImages = images;
+  invoiceSourceCalculations = sourceCalculations;
+}
+
+async function loadTaxInvoiceReference() {
+  const [pdfResponse, image] = await Promise.all([
+    fetch("reference/tax-invoice-ref.pdf"),
+    loadImage("assets/tax-invoice-ref.png", "electronic tax invoice artwork"),
+  ]);
+  if (!pdfResponse.ok) {
+    throw new Error(`Could not load the electronic tax invoice PDF (${pdfResponse.status}).`);
+  }
+  if (image.naturalWidth !== TAX_INVOICE_PAGE.widthPx || image.naturalHeight !== TAX_INVOICE_PAGE.heightPx) {
+    throw new Error(
+      `Electronic tax invoice artwork is ${image.naturalWidth} × ${image.naturalHeight}; expected 2384 × 3368.`
+    );
+  }
+  taxInvoicePdfBytes = await pdfResponse.arrayBuffer();
+  taxInvoiceImage = removeTaxInvoiceWatermark(image);
+  taxInvoiceWatermarkMask = null;
+}
+
+async function loadSaReceiptAssets() {
+  if (!window.PDFLib?.PDFDocument) {
+    throw new Error("The PDF editing library did not load. Check the connection and try again.");
+  }
+  const [pdfResponse, image, regularResponse, boldResponse, latinRegularResponse, latinBoldResponse] = await Promise.all([
+    fetch("reference/s-and-a-reference.pdf"),
+    loadImage("assets/s-and-a-reference.jpg", "S&A receipt scan"),
+    fetch("assets/NotoSansArabic-Regular.ttf"),
+    fetch("assets/NotoSansArabic-Bold.ttf"),
+    fetch("assets/LiberationSans-Regular.ttf"),
+    fetch("assets/LiberationSans-Bold.ttf"),
+  ]);
+  if (!pdfResponse.ok) {
+    throw new Error(`Could not load the S&A receipt PDF (${pdfResponse.status}).`);
+  }
+  if (image.naturalWidth !== SA_RECEIPT_PAGE.imageWidthPx || image.naturalHeight !== SA_RECEIPT_PAGE.imageHeightPx) {
+    throw new Error(
+      `S&A receipt scan is ${image.naturalWidth} × ${image.naturalHeight}; expected 1691 × 3000.`
+    );
+  }
+  if (![regularResponse, boldResponse, latinRegularResponse, latinBoldResponse].every((response) => response.ok)) {
+    const failedResponse = [regularResponse, boldResponse, latinRegularResponse, latinBoldResponse].find((response) => !response.ok);
+    throw new Error(`Could not load the Arabic font asset (${failedResponse.status}).`);
+  }
+
+  const regular = new Uint8Array(await regularResponse.arrayBuffer());
+  const bold = new Uint8Array(await boldResponse.arrayBuffer());
+  const latinRegular = new Uint8Array(await latinRegularResponse.arrayBuffer());
+  const latinBold = new Uint8Array(await latinBoldResponse.arrayBuffer());
+  const regularFace = new FontFace("Noto Sans Arabic", regular, { weight: "400" });
+  const boldFace = new FontFace("Noto Sans Arabic", bold, { weight: "700" });
+  await Promise.all([regularFace.load(), boldFace.load()]);
+  document.fonts.add(regularFace);
+  document.fonts.add(boldFace);
+  const referenceBytes = await pdfResponse.arrayBuffer();
+  const referencePdf = await window.PDFLib.PDFDocument.load(new Uint8Array(referenceBytes));
+  const pages = referencePdf.getPages();
+  const pageSize = pages[0]?.getSize();
+  if (
+    pages.length !== 1
+    || Math.abs(pageSize.width - SA_RECEIPT_PAGE.widthPt) > 0.02
+    || Math.abs(pageSize.height - SA_RECEIPT_PAGE.heightPt) > 0.02
+  ) {
+    throw new Error("The S&A receipt reference must remain one page at 595 × 842 pt.");
+  }
+  const sourceCanvas = document.createElement("canvas");
+  sourceCanvas.width = SA_RECEIPT_PAGE.imageWidthPx;
+  sourceCanvas.height = SA_RECEIPT_PAGE.imageHeightPx;
+  const sourceContext = sourceCanvas.getContext("2d", { willReadFrequently: true });
+  sourceContext.drawImage(image, 0, 0);
+  saReceiptPdfBytes = referenceBytes;
+  saReceiptImage = image;
+  saReceiptFontBytes = { regular, bold, latinRegular, latinBold };
+  setSaReceiptQrVector(sourceContext);
+}
+
 async function start() {
   createFieldControls();
+  createInvoiceControls(invoiceFieldList, invoiceData);
+  createSaReceiptControls(saFieldList, saReceiptData);
+  createTaxInvoiceControls(taxInvoiceFieldList, taxInvoiceData);
+  const invoiceLoad = loadInvoiceReference().then(
+    () => ({ ok: true }),
+    (error) => ({ ok: false, error })
+  );
+  const saReceiptLoad = loadSaReceiptAssets().then(
+    () => ({ ok: true }),
+    (error) => ({ ok: false, error })
+  );
+  const taxInvoiceLoad = loadTaxInvoiceReference().then(
+    () => ({ ok: true }),
+    (error) => ({ ok: false, error })
+  );
   await loadReference();
+  const invoiceResult = await invoiceLoad;
+  if (!invoiceResult.ok) {
+    invoiceLoadError = invoiceResult.error;
+    const invoiceMode = modeControls.find((control) => control.value === "invoice");
+    invoiceMode.disabled = true;
+    invoiceAvailability.hidden = false;
+    invoiceAvailability.textContent = `Tax invoice unavailable: ${
+      invoiceLoadError instanceof Error ? invoiceLoadError.message : "unknown loading error"
+    }`;
+  }
+  const saReceiptResult = await saReceiptLoad;
+  if (!saReceiptResult.ok) {
+    saReceiptLoadError = saReceiptResult.error;
+    const saReceiptMode = modeControls.find((control) => control.value === "sa-receipt");
+    saReceiptMode.disabled = true;
+    saAvailability.hidden = false;
+    saAvailability.textContent = `S&A receipt unavailable: ${
+      saReceiptLoadError instanceof Error ? saReceiptLoadError.message : "unknown loading error"
+    }`;
+  }
+  const taxInvoiceResult = await taxInvoiceLoad;
+  if (!taxInvoiceResult.ok) {
+    taxInvoiceLoadError = taxInvoiceResult.error;
+    const taxInvoiceMode = modeControls.find((control) => control.value === "tax-invoice-ref");
+    taxInvoiceMode.disabled = true;
+    taxInvoiceAvailability.hidden = false;
+    taxInvoiceAvailability.textContent = `Electronic tax invoice unavailable: ${
+      taxInvoiceLoadError instanceof Error ? taxInvoiceLoadError.message : "unknown loading error"
+    }`;
+  }
   renderPreview();
-  exportButton.disabled = false;
   updateControls();
 }
 
 fieldList.addEventListener("change", updateControls);
 fieldList.addEventListener("input", updateControls);
+invoiceForm.addEventListener("input", updateControls);
+invoiceForm.addEventListener("submit", (event) => event.preventDefault());
+saForm.addEventListener("input", updateControls);
+saForm.addEventListener("submit", (event) => event.preventDefault());
+taxInvoiceForm.addEventListener("input", updateControls);
+taxInvoiceForm.addEventListener("submit", (event) => event.preventDefault());
+for (const modeControl of modeControls) {
+  modeControl.addEventListener("change", () => {
+    if (modeControl.checked) setDocumentMode(modeControl.value);
+  });
+}
 exportButton.addEventListener("click", handleExport);
 form.addEventListener("submit", (event) => event.preventDefault());
 

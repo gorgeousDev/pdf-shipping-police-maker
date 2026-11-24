@@ -54,3 +54,36 @@ The original PDF is a single-page, fully raster label. Do not redraw fixed artwo
 ## Current status
 
 The source barcode payloads and symbologies are decoded, and the editor updates both barcodes when the label ID changes. Browser comparisons, PDF dimensions, generated barcode decoding, and Arabic alignment have passed. The source font is unknown, and the reference visibly contains three sender Arabic address lines.
+
+## Invoice option — implemented
+
+The invoice reference is a two-page A4 PDF made from full-page raster images. The approved product scope is a Shipping label / Tax invoice choice, retaining the current label workflow and adding an editable six-row invoice. The invoice model includes transaction details, derived 14% VAT totals based on delivered quantity and VAT-inclusive unit prices, and matching Code 39 barcodes tied to the invoice number. Invoice numbers are limited to 8 Code 39 characters to preserve the source barcode's measured narrow-module width. Unchanged invoices export byte-for-byte; edited pages preserve the source art and page size, with unknown font matching documented.
+
+See [invoice-reference-analysis.md](./docs/invoice-reference-analysis.md), [invoice-field-map.md](./docs/invoice-field-map.md), and [invoice-implementation-plan.md](./docs/invoice-implementation-plan.md) for source measurements, field masks, the approved calculation rules, and implementation details.
+
+The invoice editor and export paths are implemented. Browser verification confirmed the unchanged invoice and shipping PDFs export byte-for-byte, edited invoice output remains two portrait A4 pages, regenerated Code 39 barcodes decode to the entered number, and editable changes remain within the measured field masks. Edited text uses an approximate system font because the reference is fully rasterized.
+
+## S&A receipt option — digital redraw implemented
+
+The S&A mode now composes a new one-page 595 × 842 pt receipt from vector rules, vector text, and a vector trace of the QR pattern. The 1691 × 3000 px source scan is used as a measuring/reference source only and is not embedded in the export. The default receipt data is built from exact quantities and unit prices: quantities and displayed amounts use two decimals, line totals are rounded from exact values, and the 14% VAT, net, and paid totals are derived. The controls remain independently editable after initialization; values retain fixed text sizes and validation blocks descriptions that cannot fit after the approved table reflow.
+
+The source PDF contains no native text or embedded fonts, so the exact face cannot be identified. Noto Sans Arabic and Liberation Sans are visually matched substitutes. The QR payload is still undecoded; its observed pattern is traced unchanged and must not be regenerated from receipt values.
+
+Targeted verification:
+
+- The edited output is one page at exactly 595 × 842 pt.
+- `pdfimages -list` reports no raster images in the digital export; `pdffonts` confirms embedded Arabic and Latin fonts.
+- The final PDF was rendered at 160 dpi and visually inspected against the reference. Table font size is fixed, and long descriptions reflow within the available table space; values that push the footer beyond the page block export.
+- The corrected export's extracted text contains `3000.00`, `180263.10`, `52.69`, `183315.79`, `25664.21`, and `208980.00`; the PDF remains one 595 × 842 pt page with no raster images.
+- Browser checks confirmed the receipt controls remain editable and an overlong description triggers the field-layout error, then clears when restored.
+- The QR pattern is a vector trace of the source pixels. No QR decoder is available in the local environment, so machine-readability remains unverified.
+
+See [S&A reference analysis](./docs/s-and-a-reference-analysis.md), [S&A field map](./docs/s-and-a-field-map.md), [digital rebuild plan](./docs/s-and-a-digital-rebuild-plan.md), and [implementation report](./docs/s-and-a-implementation-plan.md).
+
+## Additional electronic tax invoice — implemented
+
+The new `reference/tax-invoice-ref.pdf` is a one-page 596 × 842 pt PDF with native vector/text artwork, embedded DejaVu Sans fonts, and a 375 × 375 QR image. The new Electronic tax invoice mode keeps its own data model and controls, renders the 2384 × 3368 source preview, overlays replacements in fixed boxes, and exports a reconstructed one-page PDF. The default line sales amounts are calculated from quantity × unit price; the sales total, 14% VAT, and grand total are derived. Timestamp fields apply LRI/PDI isolates at render time so the visual time-then-date order matches the reference, and item descriptions wrap within their measured boxes. Numeric-only amount fields convert typed Western digits to Arabic-Indic digits; mixed text, dates, quantities with units, IDs, and codes retain their typed digit style. Controls remain independently editable after initialization.
+
+Browser verification confirmed the mode loads and the corrected header dates, table values, and summary values render completely. Seller and buyer names, registrations, addresses, reference ID, and footer signature were checked in the exported page image after widening their masks; all words and `#` signs are present. The exported PDF reopens as one 596 × 842 pt page. Switching back to Shipping label leaves that mode selected and its original controls available. The QR payload remains undecoded and the QR is preserved unchanged, so it may no longer describe edited invoice values.
+
+See [tax invoice reference analysis](./docs/tax-invoice-reference-analysis.md), [tax invoice field map](./docs/tax-invoice-field-map.md), [implementation plan](./docs/tax-invoice-implementation-plan.md), and [implementation and testing report](./docs/tax-invoice-implementation-and-testing-report.md).
