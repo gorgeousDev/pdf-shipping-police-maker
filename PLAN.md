@@ -63,22 +63,13 @@ See [invoice-reference-analysis.md](./docs/invoice-reference-analysis.md), [invo
 
 The invoice editor and export paths are implemented. Browser verification confirmed the unchanged invoice and shipping PDFs export byte-for-byte, edited invoice output remains two portrait A4 pages, regenerated Code 39 barcodes decode to the entered number, and editable changes remain within the measured field masks. Edited text uses an approximate system font because the reference is fully rasterized.
 
-## S&A receipt option — digital redraw implemented
+## S&A receipt option — HTML rebuild implemented
 
-The S&A mode now composes a new one-page 595 × 842 pt receipt from vector rules, vector text, and a vector trace of the QR pattern. The 1691 × 3000 px source scan is used as a measuring/reference source only and is not embedded in the export. The default receipt data is built from exact quantities and unit prices: quantities and displayed amounts use two decimals, line totals are rounded from exact values, and the 14% VAT, net, and paid totals are derived. The controls remain independently editable after initialization; values retain fixed text sizes and validation blocks descriptions that cannot fit after the approved table reflow.
+The S&A mode now uses semantic HTML/CSS/JavaScript populated from the electronic tax invoice and browser print-to-PDF. Customer code, cashier, and register/till start blank. The full-page scan is not used in the output; the QR is a standalone SVG trace. Its font stack requests Helvetica, then Arial and sans-serif; this Windows environment has no Helvetica-named font and uses Arial.
 
-The source PDF contains no native text or embedded fonts, so the exact face cannot be identified. Noto Sans Arabic and Liberation Sans are visually matched substitutes. The QR payload is still undecoded; its observed pattern is traced unchanged and must not be regenerated from receipt values.
+Headless Chrome generated a one-page PDF with no raster image XObjects. Its measured MediaBox is 594.95996 × 841.91998 pt, 0.04004 pt narrower and 0.08002 pt shorter than the source's 595 × 842 pt. Layout follows the full-page image in the reference folder and preserves its blank upper margin; the latest output screenshot is used only to confirm current values and diagnose issues. Item descriptions wrap inside fixed columns; export is blocked if row heights exceed the measured table body. Browser/PDF visual verification is still needed after the full-page coordinate mapping. Font matching remains approximate. The QR payload and machine-readability are unverified.
 
-Targeted verification:
-
-- The edited output is one page at exactly 595 × 842 pt.
-- `pdfimages -list` reports no raster images in the digital export; `pdffonts` confirms embedded Arabic and Latin fonts.
-- The final PDF was rendered at 160 dpi and visually inspected against the reference. Table font size is fixed, and long descriptions reflow within the available table space; values that push the footer beyond the page block export.
-- The corrected export's extracted text contains `3000.00`, `180263.10`, `52.69`, `183315.79`, `25664.21`, and `208980.00`; the PDF remains one 595 × 842 pt page with no raster images.
-- Browser checks confirmed the receipt controls remain editable and an overlong description triggers the field-layout error, then clears when restored.
-- The QR pattern is a vector trace of the source pixels. No QR decoder is available in the local environment, so machine-readability remains unverified.
-
-See [S&A reference analysis](./docs/s-and-a-reference-analysis.md), [S&A field map](./docs/s-and-a-field-map.md), [digital rebuild plan](./docs/s-and-a-digital-rebuild-plan.md), and [implementation report](./docs/s-and-a-implementation-plan.md).
+See the [implementation report](./docs/s-and-a-implementation-plan.md), [reference analysis](./docs/s-and-a-reference-analysis.md), and [field map](./docs/s-and-a-field-map.md) for measurements and remaining limitations.
 
 ## Additional electronic tax invoice — implemented
 

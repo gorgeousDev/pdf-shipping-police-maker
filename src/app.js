@@ -15,24 +15,24 @@ import {
   createSaReceiptControls,
   createSaReceiptData,
   renderSaReceiptPage,
-  renderSaReceiptPdfPage,
   setSaReceiptQrVector,
   setSaReceiptValue,
   validateSaReceiptLayout,
-} from "./sa-receipt.js?v=33";
+} from "./sa-receipt.js?v=40";
 import {
-  removeTaxInvoiceWatermark,
   createTaxInvoiceControls,
   createTaxInvoiceData,
+  renderTaxInvoiceTable,
   renderTaxInvoiceOverlay,
   renderTaxInvoicePage,
   setTaxInvoiceValue,
   taxInvoiceHasChanges,
   verifyTaxInvoiceOverlay,
   TAX_INVOICE_PAGE,
-} from "./tax-invoice.js?v=20";
+} from "./tax-invoice.js?v=25";
 
 const PAGE = { widthPt: 215, heightPt: 369, widthPx: 895, heightPx: 1537 };
+const TAX_INVOICE_EXPORT_BORDER_WIDTH_PT = 0.15;
 const FIELD_DEFINITIONS = [
   {
     id: "orderNo",
@@ -247,6 +247,9 @@ const taxInvoiceEditorPanel = document.getElementById("tax-invoice-editor-panel"
 const taxInvoicePreview = document.getElementById("tax-invoice-preview");
 const taxInvoiceCanvas = document.getElementById("tax-invoice-canvas");
 const taxInvoiceContext = taxInvoiceCanvas.getContext("2d");
+const taxInvoiceFieldsCanvas = document.getElementById("tax-invoice-fields-canvas");
+const taxInvoiceFieldsContext = taxInvoiceFieldsCanvas.getContext("2d", { willReadFrequently: true });
+const taxInvoiceTable = document.getElementById("tax-invoice-table-grid");
 const saFieldList = document.getElementById("sa-field-list");
 const saAvailability = document.getElementById("sa-availability");
 const saEditorPanel = document.getElementById("sa-editor-panel");
@@ -259,27 +262,23 @@ const invoiceCanvases = [
   document.getElementById("invoice-canvas-2"),
 ];
 const invoiceContexts = invoiceCanvases.map((invoiceCanvas) => invoiceCanvas.getContext("2d"));
-const saCanvas = document.getElementById("sa-canvas");
-const saContext = saCanvas.getContext("2d", { willReadFrequently: true });
+const saPage = document.getElementById("sa-page");
 const replacementData = Object.fromEntries(
   FIELD_DEFINITIONS.map(({ id, defaultValue = "" }) => [id, { enabled: false, value: defaultValue }])
 );
 const invoiceData = createInvoiceData();
-const saReceiptData = createSaReceiptData();
 const taxInvoiceData = createTaxInvoiceData();
+const saReceiptData = createSaReceiptData(taxInvoiceData);
 
 let originalPdfBytes;
 let referenceImage;
 let invoicePdfBytes;
 let invoiceImages = [];
 let invoiceSourceCalculations;
-let saReceiptPdfBytes;
 let saReceiptImage;
-let saReceiptFontBytes;
 let taxInvoicePdfBytes;
 let taxInvoiceImage;
-let taxInvoiceWatermarkMask;
-let documentMode = "shipping";
+let documentMode = "sa-receipt";
 let invoiceLoadError;
 let saReceiptLoadError;
 let taxInvoiceLoadError;
@@ -464,25 +463,27 @@ function syncTaxInvoiceDataFromControls() {
 
 function renderSaReceiptPreview() {
   if (!saReceiptImage) return;
-  renderSaReceiptPage(saContext, saReceiptData);
+  renderSaReceiptPage(saPage, saReceiptData);
 }
 
 function renderTaxInvoicePreview() {
   if (!taxInvoiceImage) return;
-  renderTaxInvoicePage(taxInvoiceContext, taxInvoiceImage, taxInvoiceData, taxInvoiceWatermarkMask);
+  renderTaxInvoicePage(taxInvoiceContext, taxInvoiceImage, taxInvoiceData);
+  renderTaxInvoiceOverlay(taxInvoiceFieldsContext, taxInvoiceData);
+  renderTaxInvoiceTable(taxInvoiceTable, taxInvoiceData);
 }
 
 function updateSaReceiptControls() {
   syncSaReceiptDataFromControls();
-  const validation = validateSaReceiptLayout(saContext, saReceiptData);
   renderSaReceiptPreview();
+  const validation = validateSaReceiptLayout(saPage, saReceiptData);
 
-  exportButton.textContent = "Export digital S&A receipt PDF";
-  exportButton.disabled = !saReceiptPdfBytes || !saReceiptImage || validation.errors.length > 0;
+  exportButton.textContent = "Print / Save S&A receipt as PDF";
+  exportButton.disabled = !saReceiptImage || validation.errors.length > 0;
   if (validation.errors.length > 0) {
     setStatus(validation.errors[0], "error");
   } else {
-    setStatus("Digital vector receipt preview. Values keep fixed type sizes; overflow blocks export.");
+    setStatus("HTML receipt preview. Choose Print / Save as PDF to open the browser print dialog.");
   }
 }
 
@@ -490,11 +491,11 @@ function updateTaxInvoiceControls() {
   syncTaxInvoiceDataFromControls();
   const edited = taxInvoiceHasChanges(taxInvoiceData);
   renderTaxInvoicePreview();
-  exportButton.textContent = edited ? "Export edited invoice without watermark" : "Export invoice without watermark";
+  exportButton.textContent = edited ? "Export styled electronic tax invoice" : "Export electronic tax invoice";
   exportButton.disabled = !taxInvoicePdfBytes;
   setStatus(edited
-    ? "Invoice values are overlaid in fixed positions. The watermark is removed; the QR code remains unchanged."
-    : "The watermark is removed in the preview and exported PDF. The QR code remains unchanged.");
+    ? "Invoice values are overlaid in fixed positions; the reference artwork and QR remain unchanged."
+    : "Reference artwork and invoice values are ready for export. The QR code remains unchanged.");
 }
 
 function setDocumentMode(mode) {
@@ -512,18 +513,18 @@ function setDocumentMode(mode) {
   saPreview.hidden = !saReceiptMode;
   taxInvoicePreview.hidden = !taxInvoiceMode;
   previewDescription.textContent = taxInvoiceMode
-    ? "The source invoice layout and QR stay fixed; edited values are overlaid in place."
+    ? "The reference artwork and QR are retained; the table uses CSS cell borders, and the watermark sits behind its content."
     : invoiceMode
       ? "The supplied A4 artwork is preserved; edited values are overlaid in place."
       : saReceiptMode
-      ? "A digital redraw follows the reference's measured layout, text sizes, and fixed receipt artwork."
+      ? "A semantic HTML receipt follows the reference's measured layout and text sizes; no full-page image is used."
       : "Original artwork stays fixed; checked fields are replacements.";
   pageInfo.textContent = taxInvoiceMode
     ? "Reference page: 596 × 842 pt · one portrait A4-sized page"
     : invoiceMode
       ? "Reference: 2 portrait A4 pages · 595.28 × 841.89 pt each"
       : saReceiptMode
-      ? "Digital receipt: 1 portrait page · 595 × 842 pt · fixed-size vector text and rules"
+      ? "HTML receipt: 1 portrait page · 595 × 842 pt · browser print-to-PDF"
       : "Reference page: 215 × 369 pt · 75.847 × 130.175 mm";
   document.querySelector(".eyebrow").textContent = taxInvoiceMode
     ? "Electronic tax invoice"
@@ -716,6 +717,29 @@ function downloadPdf(bytes, filename) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+function printSaReceipt() {
+  const originalTitle = document.title;
+  let printFinished = false;
+  const finishPrint = () => {
+    if (printFinished) return;
+    printFinished = true;
+    document.body.classList.remove("print-sa-receipt");
+    document.title = originalTitle;
+    setStatus("Print dialog closed. A PDF is saved only if you chose Save as PDF.");
+  };
+  document.body.classList.add("print-sa-receipt");
+  document.title = "S&A receipt";
+  window.addEventListener("afterprint", finishPrint, { once: true });
+  setStatus("Choose Save as PDF in the browser print dialog to create the 595 × 842 pt receipt.");
+  try {
+    window.print();
+  } catch (error) {
+    window.removeEventListener("afterprint", finishPrint);
+    finishPrint();
+    throw error;
+  }
+}
+
 async function exportEditedPdf() {
   if (!window.PDFLib?.PDFDocument) {
     throw new Error("The PDF editing library did not load. Check the connection and try again.");
@@ -786,54 +810,67 @@ async function exportEditedInvoicePdf() {
   return pdf.save();
 }
 
-async function exportEditedSaReceiptPdf() {
-  if (!saReceiptPdfBytes || !saReceiptImage || !saReceiptFontBytes || !saReceiptFontBytes.latinRegular) {
-    throw new Error("The digital S&A receipt resources are not available.");
-  }
-  if (!window.PDFLib?.PDFDocument || !window.fontkit) {
-    throw new Error("The PDF vector font tools did not load.");
-  }
-  const pdf = await window.PDFLib.PDFDocument.create();
-  pdf.registerFontkit(window.fontkit);
-  const regular = await pdf.embedFont(saReceiptFontBytes.regular, { subset: false });
-  const bold = await pdf.embedFont(saReceiptFontBytes.bold, { subset: false });
-  const latinRegular = await pdf.embedFont(saReceiptFontBytes.latinRegular, { subset: false });
-  const latinBold = await pdf.embedFont(saReceiptFontBytes.latinBold, { subset: false });
-  const page = pdf.addPage([SA_RECEIPT_PAGE.widthPt, SA_RECEIPT_PAGE.heightPt]);
-  renderSaReceiptPdfPage(page, { regular, bold, latinRegular, latinBold }, saReceiptData);
-  const outputBytes = await pdf.save();
-  const checkPdf = await window.PDFLib.PDFDocument.load(outputBytes);
-  const checkPages = checkPdf.getPages();
-  const outputSize = checkPages[0]?.getSize();
-  if (
-    checkPages.length !== 1
-    || Math.abs(outputSize.width - SA_RECEIPT_PAGE.widthPt) > 0.02
-    || Math.abs(outputSize.height - SA_RECEIPT_PAGE.heightPt) > 0.02
-  ) {
-    throw new Error("The edited S&A receipt failed its one-page 595 × 842 pt output check.");
-  }
-  return outputBytes;
-}
-
 async function exportEditedTaxInvoicePdf() {
   if (!window.PDFLib?.PDFDocument) {
     throw new Error("The PDF editing library did not load. Check the connection and try again.");
+  }
+  if (!window.html2canvas) {
+    throw new Error("The HTML rendering library did not load. Check the connection and try again.");
   }
   if (!taxInvoicePdfBytes || !taxInvoiceImage) {
     throw new Error("The tax invoice reference is not available.");
   }
 
-  const overlayCanvas = document.createElement("canvas");
-  overlayCanvas.width = TAX_INVOICE_PAGE.widthPx;
-  overlayCanvas.height = TAX_INVOICE_PAGE.heightPx;
-  const overlayContext = overlayCanvas.getContext("2d", { willReadFrequently: true });
-  renderTaxInvoiceOverlay(overlayContext, taxInvoiceData, taxInvoiceWatermarkMask);
-  verifyTaxInvoiceOverlay(overlayContext);
-  const pageCanvas = document.createElement("canvas");
-  pageCanvas.width = TAX_INVOICE_PAGE.widthPx;
-  pageCanvas.height = TAX_INVOICE_PAGE.heightPx;
-  const pageContext = pageCanvas.getContext("2d");
-  renderTaxInvoicePage(pageContext, taxInvoiceImage, taxInvoiceData, taxInvoiceWatermarkMask);
+  renderTaxInvoicePreview();
+  verifyTaxInvoiceOverlay(taxInvoiceFieldsContext);
+  const frame = taxInvoicePreview.querySelector(".tax-invoice-frame");
+  const frameBounds = frame.getBoundingClientRect();
+  const captureFrame = frame.cloneNode(true);
+  const sourceCanvases = frame.querySelectorAll("canvas");
+  const captureCanvases = captureFrame.querySelectorAll("canvas");
+  if (sourceCanvases.length !== captureCanvases.length) {
+    throw new Error("The tax invoice preview layers could not be copied for export.");
+  }
+  captureCanvases.forEach((canvas, index) => {
+    const context = canvas.getContext("2d");
+    if (!context) {
+      throw new Error("The tax invoice preview canvas could not be prepared for export.");
+    }
+    context.drawImage(sourceCanvases[index], 0, 0);
+  });
+  Object.assign(captureFrame.style, {
+    position: "fixed",
+    left: "-10000px",
+    top: "0",
+    width: `${TAX_INVOICE_PAGE.widthPx}px`,
+    maxWidth: "none",
+    margin: "0",
+    boxShadow: "none",
+  });
+  captureFrame.classList.add("tax-invoice-export-capture");
+  document.body.append(captureFrame);
+  let pageCanvas;
+  try {
+    const captureBounds = captureFrame.getBoundingClientRect();
+    if (
+      Math.abs(captureBounds.width - TAX_INVOICE_PAGE.widthPx) > 0.05
+      || Math.abs(captureBounds.height - TAX_INVOICE_PAGE.heightPx) > 0.05
+    ) {
+      throw new Error(`Scaled preview is ${captureBounds.width} × ${captureBounds.height} px; expected 2384 × 3368 px.`);
+    }
+    pageCanvas = await window.html2canvas(captureFrame, {
+      backgroundColor: "#ffffff",
+      logging: false,
+      scale: 1,
+      width: TAX_INVOICE_PAGE.widthPx,
+      height: TAX_INVOICE_PAGE.heightPx,
+    });
+  } finally {
+    captureFrame.remove();
+  }
+  if (pageCanvas.width !== TAX_INVOICE_PAGE.widthPx || pageCanvas.height !== TAX_INVOICE_PAGE.heightPx) {
+    throw new Error(`Export preview image is ${pageCanvas.width} × ${pageCanvas.height} px; expected 2384 × 3368 px.`);
+  }
   const pageBlob = await new Promise((resolve, reject) => {
     pageCanvas.toBlob((blob) => {
       if (blob) resolve(blob);
@@ -869,6 +906,7 @@ async function exportEditedTaxInvoicePdf() {
     width,
     height,
   });
+  drawTaxInvoicePdfBorders(outputPage, frame, frameBounds);
   const outputBytes = await outputPdf.save();
   const checkPdf = await window.PDFLib.PDFDocument.load(outputBytes, { ignoreEncryption: true });
   const checkPages = checkPdf.getPages();
@@ -881,6 +919,95 @@ async function exportEditedTaxInvoicePdf() {
     throw new Error("The edited invoice failed its one-page 596 × 842 pt output check.");
   }
   return outputBytes;
+}
+
+function drawTaxInvoicePdfBorders(outputPage, frame, frameBounds) {
+  const borderColor = getComputedStyle(frame).getPropertyValue("--tax-invoice-grid-color").trim();
+  const colorMatch = /^#([0-9a-f]{6})$/i.exec(borderColor);
+  if (!colorMatch) {
+    throw new Error(`Unsupported tax invoice border color: ${borderColor}`);
+  }
+
+  const hex = colorMatch[1];
+  const color = window.PDFLib.rgb(
+    Number.parseInt(hex.slice(0, 2), 16) / 255,
+    Number.parseInt(hex.slice(2, 4), 16) / 255,
+    Number.parseInt(hex.slice(4, 6), 16) / 255
+  );
+  const pointsPerPixel = TAX_INVOICE_PAGE.widthPt / frameBounds.width;
+  const drawnSegments = new Set();
+  const toPoint = (x, y) => ({
+    x: x * pointsPerPixel,
+    y: TAX_INVOICE_PAGE.heightPt - y * pointsPerPixel,
+  });
+  const drawLine = (x1, y1, x2, y2) => {
+    const start = toPoint(x1, y1);
+    const end = toPoint(x2, y2);
+    const forward = [start.x, start.y, end.x, end.y].map((value) => value.toFixed(3)).join(",");
+    const reverse = [end.x, end.y, start.x, start.y].map((value) => value.toFixed(3)).join(",");
+    const key = forward < reverse ? forward : reverse;
+    if (drawnSegments.has(key)) return;
+    drawnSegments.add(key);
+    outputPage.drawLine({ start, end, thickness: TAX_INVOICE_EXPORT_BORDER_WIDTH_PT, color });
+  };
+  const relativeBounds = (element) => {
+    const bounds = element.getBoundingClientRect();
+    return {
+      left: bounds.left - frameBounds.left,
+      top: bounds.top - frameBounds.top,
+      right: bounds.right - frameBounds.left,
+      bottom: bounds.bottom - frameBounds.top,
+    };
+  };
+  const addEdges = (bounds, edges) => {
+    if (edges.includes("top")) drawLine(bounds.left, bounds.top, bounds.right, bounds.top);
+    if (edges.includes("right")) drawLine(bounds.right, bounds.top, bounds.right, bounds.bottom);
+    if (edges.includes("bottom")) drawLine(bounds.left, bounds.bottom, bounds.right, bounds.bottom);
+    if (edges.includes("left")) drawLine(bounds.left, bounds.top, bounds.left, bounds.bottom);
+  };
+  const references = frame.querySelector(".tax-invoice-references-border");
+  const buyerHeading = frame.querySelector(".tax-invoice-buyer-heading-border");
+  const table = frame.querySelector("#tax-invoice-table-grid");
+  if (!references || !buyerHeading || !table) {
+    throw new Error("Tax invoice border elements are missing from the export preview.");
+  }
+
+  const headerCells = table.querySelectorAll("thead th");
+  const firstHeaderCell = headerCells[0];
+  const lastHeaderCell = headerCells[headerCells.length - 1];
+  const finalRow = table.querySelector("tbody tr:last-child");
+  if (!firstHeaderCell || !lastHeaderCell || !finalRow) {
+    throw new Error("Tax invoice table rows are missing from the export preview.");
+  }
+
+  const finalCells = finalRow.querySelectorAll("td:not(.tax-invoice-grid-empty)");
+  const lastVisibleCell = finalCells[finalCells.length - 1];
+  if (!lastVisibleCell) {
+    throw new Error("The final tax invoice table row has no bordered cells.");
+  }
+
+  const referencesBounds = relativeBounds(references);
+  const buyerBounds = relativeBounds(buyerHeading);
+  const tableBounds = relativeBounds(table);
+  const firstHeaderBounds = relativeBounds(firstHeaderCell);
+  const lastHeaderBounds = relativeBounds(lastHeaderCell);
+  const lastCellBounds = relativeBounds(lastVisibleCell);
+  addEdges(referencesBounds, ["top", "right"]);
+  addEdges(buyerBounds, ["top", "right", "bottom", "left"]);
+  drawLine(buyerBounds.right, buyerBounds.bottom, lastHeaderBounds.right, firstHeaderBounds.top);
+
+  addEdges({
+    left: firstHeaderBounds.left,
+    right: lastHeaderBounds.right,
+    top: firstHeaderBounds.top,
+    bottom: lastCellBounds.bottom,
+  }, ["top", "right", "bottom", "left"]);
+  for (const cell of table.querySelectorAll("th, td:not(.tax-invoice-grid-empty)")) {
+    addEdges(relativeBounds(cell), ["top", "right", "bottom", "left"]);
+  }
+  if (tableBounds.right < lastHeaderBounds.right || tableBounds.bottom < lastCellBounds.bottom) {
+    throw new Error("Tax invoice table border geometry is invalid.");
+  }
 }
 
 async function handleExport() {
@@ -897,10 +1024,10 @@ async function handleExport() {
   });
   try {
     if (documentMode === "tax-invoice-ref") {
-      setStatus("Building the invoice PDF without its watermark…");
+      setStatus("Building the styled invoice PDF…");
       const editedBytes = await exportEditedTaxInvoicePdf();
-      downloadPdf(editedBytes, "tax-invoice-no-watermark.pdf");
-      setStatus("Invoice exported without the watermark. The source QR remains unchanged.");
+      downloadPdf(editedBytes, "tax-invoice-styled.pdf");
+      setStatus("Styled invoice exported with invoice data, QR, the rebuilt HTML table, and the CSS watermark.");
     } else if (documentMode === "invoice") {
       const validation = validateInvoice(invoiceData);
       if (validation.errors.length > 0) {
@@ -917,14 +1044,11 @@ async function handleExport() {
         setStatus("Original two-page tax invoice exported unchanged.");
       }
     } else if (documentMode === "sa-receipt") {
-      const validation = validateSaReceiptLayout(saContext, saReceiptData);
+      const validation = validateSaReceiptLayout(saPage, saReceiptData);
       if (validation.errors.length > 0) {
         throw new Error(validation.errors[0]);
       }
-      setStatus("Drawing the fully digital S&A receipt PDF…");
-      const digitalBytes = await exportEditedSaReceiptPdf();
-      downloadPdf(digitalBytes, "sa-and-a-receipt-digital.pdf");
-      setStatus("Fully digital S&A receipt exported at 595 × 842 pt.");
+      printSaReceipt();
     } else if (isEdited()) {
       setStatus("Building the edited PDF…");
       const editedBytes = await exportEditedPdf();
@@ -952,7 +1076,7 @@ async function handleExport() {
       : documentMode === "invoice"
         ? !invoicePdfBytes || validateInvoice(invoiceData).errors.length > 0
         : documentMode === "sa-receipt"
-        ? !saReceiptPdfBytes || !saReceiptImage || validateSaReceiptLayout(saContext, saReceiptData).errors.length > 0
+        ? !saReceiptImage || validateSaReceiptLayout(saPage, saReceiptData).errors.length > 0
         : !originalPdfBytes || !isPoliceIdValid();
   }
 }
@@ -1018,34 +1142,42 @@ async function loadInvoiceReference() {
 }
 
 async function loadTaxInvoiceReference() {
-  const [pdfResponse, image] = await Promise.all([
+  const [pdfResponse, image, regularFontResponse, boldFontResponse] = await Promise.all([
     fetch("reference/tax-invoice-ref.pdf"),
     loadImage("assets/tax-invoice-ref.png", "electronic tax invoice artwork"),
+    fetch("assets/DejaVuSans.ttf"),
+    fetch("assets/DejaVuSans-Bold.ttf"),
   ]);
   if (!pdfResponse.ok) {
     throw new Error(`Could not load the electronic tax invoice PDF (${pdfResponse.status}).`);
+  }
+  if (!regularFontResponse.ok || !boldFontResponse.ok) {
+    const failedResponse = !regularFontResponse.ok ? regularFontResponse : boldFontResponse;
+    throw new Error(`Could not load the electronic tax invoice font (${failedResponse.status}).`);
   }
   if (image.naturalWidth !== TAX_INVOICE_PAGE.widthPx || image.naturalHeight !== TAX_INVOICE_PAGE.heightPx) {
     throw new Error(
       `Electronic tax invoice artwork is ${image.naturalWidth} × ${image.naturalHeight}; expected 2384 × 3368.`
     );
   }
+  const regularFont = new Uint8Array(await regularFontResponse.arrayBuffer());
+  const boldFont = new Uint8Array(await boldFontResponse.arrayBuffer());
+  const regularFace = new FontFace("Electronic Invoice DejaVu Sans", regularFont, { weight: "400" });
+  const boldFace = new FontFace("Electronic Invoice DejaVu Sans", boldFont, { weight: "700" });
+  await Promise.all([regularFace.load(), boldFace.load()]);
+  document.fonts.add(regularFace);
+  document.fonts.add(boldFace);
   taxInvoicePdfBytes = await pdfResponse.arrayBuffer();
-  taxInvoiceImage = removeTaxInvoiceWatermark(image);
-  taxInvoiceWatermarkMask = null;
+  taxInvoiceImage = image;
 }
 
 async function loadSaReceiptAssets() {
   if (!window.PDFLib?.PDFDocument) {
     throw new Error("The PDF editing library did not load. Check the connection and try again.");
   }
-  const [pdfResponse, image, regularResponse, boldResponse, latinRegularResponse, latinBoldResponse] = await Promise.all([
+  const [pdfResponse, image] = await Promise.all([
     fetch("reference/s-and-a-reference.pdf"),
     loadImage("assets/s-and-a-reference.jpg", "S&A receipt scan"),
-    fetch("assets/NotoSansArabic-Regular.ttf"),
-    fetch("assets/NotoSansArabic-Bold.ttf"),
-    fetch("assets/LiberationSans-Regular.ttf"),
-    fetch("assets/LiberationSans-Bold.ttf"),
   ]);
   if (!pdfResponse.ok) {
     throw new Error(`Could not load the S&A receipt PDF (${pdfResponse.status}).`);
@@ -1055,20 +1187,6 @@ async function loadSaReceiptAssets() {
       `S&A receipt scan is ${image.naturalWidth} × ${image.naturalHeight}; expected 1691 × 3000.`
     );
   }
-  if (![regularResponse, boldResponse, latinRegularResponse, latinBoldResponse].every((response) => response.ok)) {
-    const failedResponse = [regularResponse, boldResponse, latinRegularResponse, latinBoldResponse].find((response) => !response.ok);
-    throw new Error(`Could not load the Arabic font asset (${failedResponse.status}).`);
-  }
-
-  const regular = new Uint8Array(await regularResponse.arrayBuffer());
-  const bold = new Uint8Array(await boldResponse.arrayBuffer());
-  const latinRegular = new Uint8Array(await latinRegularResponse.arrayBuffer());
-  const latinBold = new Uint8Array(await latinBoldResponse.arrayBuffer());
-  const regularFace = new FontFace("Noto Sans Arabic", regular, { weight: "400" });
-  const boldFace = new FontFace("Noto Sans Arabic", bold, { weight: "700" });
-  await Promise.all([regularFace.load(), boldFace.load()]);
-  document.fonts.add(regularFace);
-  document.fonts.add(boldFace);
   const referenceBytes = await pdfResponse.arrayBuffer();
   const referencePdf = await window.PDFLib.PDFDocument.load(new Uint8Array(referenceBytes));
   const pages = referencePdf.getPages();
@@ -1084,10 +1202,11 @@ async function loadSaReceiptAssets() {
   sourceCanvas.width = SA_RECEIPT_PAGE.imageWidthPx;
   sourceCanvas.height = SA_RECEIPT_PAGE.imageHeightPx;
   const sourceContext = sourceCanvas.getContext("2d", { willReadFrequently: true });
+  if (!sourceContext) {
+    throw new Error("The S&A reference QR could not be read in this browser.");
+  }
   sourceContext.drawImage(image, 0, 0);
-  saReceiptPdfBytes = referenceBytes;
   saReceiptImage = image;
-  saReceiptFontBytes = { regular, bold, latinRegular, latinBold };
   setSaReceiptQrVector(sourceContext);
 }
 
@@ -1159,7 +1278,7 @@ for (const modeControl of modeControls) {
 exportButton.addEventListener("click", handleExport);
 form.addEventListener("submit", (event) => event.preventDefault());
 
-start().catch((error) => {
+start().then(() => setDocumentMode("sa-receipt")).catch((error) => {
   console.error("Application initialization failed:", error);
   exportButton.disabled = true;
   setStatus(error instanceof Error ? error.message : "Application initialization failed.", "error");

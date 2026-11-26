@@ -3,6 +3,8 @@
 **Source:** `reference/s-and-a-reference.pdf`  
 **Image coordinate origin:** top-left of the 1691 × 3000 embedded JPEG; x increases right and y increases down. Upper bounds are exclusive.
 
+The separately supplied full-page comparison image, `reference/s-and-a-reference-1.png`, is 1653 × 2339 px (aspect ratio 0.7067), consistent with the 595 × 842 pt page. It is used read-only for visual alignment; the PDF remains authoritative for page geometry.
+
 ## Page and image geometry
 
 | Page | Embedded image bounds (px) | PDF MediaBox (pt) | Image placement (pt) |
@@ -50,7 +52,7 @@ Bands below were located by thresholding dark raster pixels and visually checkin
 
 Within those rows, the current measured value-only masks are sales total `[925, 1680, 1210, 1760]`, discount `[1095, 1760, 1260, 1850]`, VAT amount `[620, 1850, 875, 1945]`, net/payable `[1175, 1940, 1480, 2030]`, paid amount `[1380, 2100, 1675, 2200]`, and return/exchange amount `[1520, 2260, 1675, 2380]`. These value masks exclude the printed Arabic labels and separators; verify them visually if their renderer changes.
 
-The scan's blank upper margin is approximately `[0, 0, 1691, 430]`. It contains no identified transaction value and should remain untouched.
+The source scan's blank upper margin is approximately `[0, 0, 1691, 430]` and is preserved. The image attached with the latest instructions is a current-output screenshot: it is used only to confirm current data values and diagnose rendering problems, not as the layout source. The visual authority remains `reference/s-and-a-reference-1.png` and its source PDF.
 
 ## Table columns
 
@@ -75,24 +77,36 @@ These ranges are intentionally conservative and overlap slightly because the sca
 
 ## Digital layout coordinates
 
-The digital renderer uses the source image's pixel coordinate system as a layout grid, with `x` and `y` converted by the page placement formula above. It does not embed the source scan. The vector page uses a clean white background and redraws headings, labels, separators, line items, totals, and footer text.
+The digital renderer uses the embedded JPEG's pixel coordinates as a layout grid and preserves the reference's centered image placement. For source coordinate `(x, y)`:
+
+- `x_pt = 60.19633 + x × 474.60733 / 1691`
+- `y_pt = y × 842 / 3000`
+
+The scan itself is not embedded. The vector page redraws headings, labels, separators, line items, totals, and footer text; the QR alone is traced as vector rectangles.
 
 The long invoice-derived descriptions required a modest reflow while preserving the receipt's content hierarchy and fixed font-size classes:
 
-| Element | Digital coordinate / size |
+| Element | Digital source-image coordinate / size |
 |---|---|
-| Company heading | right anchor `[1675, 497]`, 54 px |
-| Metadata row 1 | baseline `y=573`; date starts at `x=900`, time at `x=420`, period at right anchor `x=1675` |
-| Receipt number | right anchor `[1675, 670]`, 50 px |
-| Cashier / till / customer code | baselines `755`, `845`, `938` |
-| Transaction and customer row | baseline `1042` |
-| Table top rule / headings / rule | `y=1100`, `y=1198`, `y=1245` |
-| Table start | `y=1277`; dynamic rows use 76 px minimum height and expand for fixed-size wrapped descriptions |
-| Digital table columns | total `[85,460]`, unit price `[470,810]`, quantity `[790,1010]`, description `[1030,1675]` |
-| Table bottom rule | `TABLE_START_Y + sum(row heights) + 9`; the currently approved data returns this to `y=1644` |
+| Company greeting | right anchor `[1675, 580]`, 60 px |
+| Date and time row | `y=681`; date starts at `x=900`, time at `x=420`, period at right anchor `x=1675` |
+| Receipt number | right anchor `[1675, 767]`, 50 px |
+| Cashier / till / customer code | `y=857`, `947`, `1035` |
+| Transaction and customer row | `y=1127` |
+| Table top rule / heading rule | `y=1198`, `y=1350` |
+| Table body | starts at `y=1358`, fixed end at `y=1638`; available height 280 source px |
+| Digital table columns (visual order, right to left) | description `[910,1675]` (765 px), quantity `[650,910]` (260 px), unit price `[370,650]` (280 px), line total `[85,370]` (285 px) |
+| Summary / payment / return | totals at `y=1720`, `1810`, `1900`, `1990`; paid at `2160`; return row at `2350` |
+| Footer | separator `y=2424`; website and following lines at `2534`, `2620`, `2728`, `2810`, `2890` |
 
-When item text needs more lines, the header/table block is reflowed upward to make room while fixed-size item text remains unchanged. If the expanded rows would push the footer beyond the page, export is blocked. The original four-column organization and three item rows remain; numeric columns are widened to fit the approved values.
+Layout font sizes are expressed in the embedded image's source-coordinate units. The company heading is 60 px; header/value text is generally 50–58 px; table text is 56–58 px. The source font is unknown, so these are measured-size approximations rendered with Helvetica first and Arial fallback.
+
+The three item descriptions wrap without changing font size. All summary, payment, return, and footer anchors remain fixed. Export is blocked if the three rendered rows exceed the 280 px table body or if a value exceeds its fixed text box; long values are not truncated or silently moved.
+
+When item text needs more lines, the table rows expand while fixed-size item text remains unchanged. If the expanded rows exceed the fixed table body, export is blocked and all other fields stay anchored. The four columns and three item rows remain; column edges follow the reference's measured RTL order, and current invoice values remain visible in the rendered output.
+
+Table headings and descriptions follow RTL order, with the item description at the right and numeric columns continuing leftward as quantity, unit price, and line total. Numeric/date values use isolated LTR runs. The header labels and table headings use regular weight; summary labels and selected footer text retain emphasis. Dashed rules separate the table, payment, and return sections; the footer separator is solid.
 
 The QR region `[88,430,316,800]` is used only to trace black pixel runs into vector rectangles. The generated page contains no raster image, but the QR payload and machine readability have not been verified because no local decoder was available.
 
-The source font is not embedded in the reference. Noto Sans Arabic and Liberation Sans are visual substitutes; exact glyph shapes cannot be guaranteed. The browser and PDF use the same fixed text-size classes, with mixed Arabic/Latin runs positioned separately for RTL readability.
+The source font is not embedded in the reference. The S&A renderer requests Helvetica first, followed by Arial and sans-serif. No Helvetica-named font is installed in the current Windows Fonts directory, so the generated PDF uses Arial (`ArialMT` and `Arial-BoldMT`); exact source font identity and glyph shapes remain unverified. Mixed Arabic/Latin runs retain their RTL/LTR direction handling.

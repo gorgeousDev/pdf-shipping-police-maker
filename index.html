@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="Edit a shipping label, tax invoice, or S&A receipt and export a PDF.">
     <title>Shipping Label, Invoice &amp; Receipt Editor</title>
-    <link rel="stylesheet" href="src/styles.css">
+    <link rel="stylesheet" href="src/styles.css?v=30">
   </head>
   <body>
     <main class="app">
@@ -59,7 +59,7 @@
         <section id="sa-editor-panel" class="editor-content" aria-labelledby="sa-editor-title" hidden>
           <div class="section-heading">
             <h2 id="sa-editor-title">S&amp;A receipt details</h2>
-            <p>Digitally redrawn receipt with fixed-size text and vector artwork. Amounts stay independently editable; overflow blocks export.</p>
+            <p>HTML receipt styled from the reference and populated from the electronic tax invoice. Customer code, cashier, and till start blank because the invoice has no matching values.</p>
           </div>
           <form id="sa-form">
             <div id="sa-field-list" class="invoice-field-list"></div>
@@ -98,11 +98,73 @@
         <div id="tax-invoice-preview" class="tax-invoice-preview preview-content" hidden>
           <div class="tax-invoice-frame">
             <canvas id="tax-invoice-canvas" width="2384" height="3368" aria-label="Electronic tax invoice preview"></canvas>
+            <div class="tax-invoice-section-border tax-invoice-references-border" aria-hidden="true"></div>
+            <div class="tax-invoice-section-border tax-invoice-buyer-heading-border" aria-hidden="true"></div>
+            <table id="tax-invoice-table-grid" aria-label="Invoice items and totals">
+              <colgroup>
+                <col><col><col><col><col><col>
+              </colgroup>
+              <thead>
+                <tr class="tax-invoice-grid-header">
+                  <th scope="col">قيمة المبيعات <bdi dir="rtl">(ج.م)</bdi></th>
+                  <th scope="col">سعر الوحدة <bdi dir="rtl">(ج.م)</bdi></th>
+                  <th scope="col">الكمية/<br>نوع الوحدة</th>
+                  <th scope="col">الوصف</th>
+                  <th scope="col">كود الصنف</th>
+                  <th scope="col">اسم الكود</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="tax-invoice-grid-item-1">
+                  <td data-tax-invoice-path="items.0.salesAmount"></td>
+                  <td data-tax-invoice-path="items.0.unitPrice"></td>
+                  <td data-tax-invoice-path="items.0.quantityUnit"></td>
+                  <td data-tax-invoice-path="items.0.description"></td>
+                  <td data-tax-invoice-path="items.0.code"></td>
+                  <td data-tax-invoice-path="items.0.name"></td>
+                </tr>
+                <tr class="tax-invoice-grid-item-2">
+                  <td data-tax-invoice-path="items.1.salesAmount"></td>
+                  <td data-tax-invoice-path="items.1.unitPrice"></td>
+                  <td data-tax-invoice-path="items.1.quantityUnit"></td>
+                  <td data-tax-invoice-path="items.1.description"></td>
+                  <td data-tax-invoice-path="items.1.code"></td>
+                  <td data-tax-invoice-path="items.1.name"></td>
+                </tr>
+                <tr class="tax-invoice-grid-item-3">
+                  <td data-tax-invoice-path="items.2.salesAmount"></td>
+                  <td data-tax-invoice-path="items.2.unitPrice"></td>
+                  <td data-tax-invoice-path="items.2.quantityUnit"></td>
+                  <td data-tax-invoice-path="items.2.description"></td>
+                  <td data-tax-invoice-path="items.2.code"></td>
+                  <td data-tax-invoice-path="items.2.name"></td>
+                </tr>
+                <tr class="tax-invoice-grid-summary">
+                  <td data-tax-invoice-path="summary.salesTotal"></td><td>إجمالي المبيعات <bdi dir="rtl">(ج.م)</bdi></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td>
+                </tr>
+                <tr class="tax-invoice-grid-summary">
+                  <td data-tax-invoice-path="summary.discountTotal"></td><td>إجمالي الخصم <bdi dir="rtl">(ج.م)</bdi></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td>
+                </tr>
+                <tr class="tax-invoice-grid-summary">
+                  <td data-tax-invoice-path="summary.itemDiscountTotal"></td><td>إجمالي خصم الصنف <bdi dir="rtl">(ج.م)</bdi></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td>
+                </tr>
+                <tr class="tax-invoice-grid-summary">
+                  <td data-tax-invoice-path="summary.vat"></td><td>ضريبة القيمة المضافة <bdi dir="rtl">(ج.م)</bdi></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td>
+                </tr>
+                <tr class="tax-invoice-grid-summary">
+                  <td data-tax-invoice-path="summary.additionalInvoiceDiscount"></td><td>خصم الفاتورة الإضافي <bdi dir="rtl">(ج.م)</bdi></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td>
+                </tr>
+                <tr class="tax-invoice-grid-summary">
+                  <td data-tax-invoice-path="summary.grandTotal"></td><td>إجمالي المبلغ <bdi dir="rtl">(ج.م)</bdi></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td>
+                </tr>
+              </tbody>
+            </table>
+            <canvas id="tax-invoice-fields-canvas" width="2384" height="3368" aria-hidden="true"></canvas>
           </div>
         </div>
         <div id="sa-preview" class="sa-preview preview-scroll preview-content" hidden>
           <div class="sa-frame">
-          <canvas id="sa-canvas" width="1190" height="1684" aria-label="Fully digital S&amp;A receipt preview"></canvas>
+            <article id="sa-page" class="sa-page" lang="ar" dir="rtl" aria-label="S&amp;A receipt preview"></article>
           </div>
         </div>
         <p id="page-info" class="page-info">Reference page: 215 × 369 pt · 75.847 × 130.175 mm</p>
@@ -111,6 +173,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"></script>
-    <script type="module" src="src/app.js?v=23"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script type="module" src="src/app.js?v=41"></script>
   </body>
 </html>

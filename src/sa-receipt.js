@@ -8,84 +8,52 @@ export const SA_RECEIPT_PAGE = Object.freeze({
   sourceXPt: 60.19633,
   sourceWidthPt: 474.60733,
   sourceScalePt: 474.60733 / 1691,
-  previewScale: 2,
-  previewWidth: 1190,
-  previewHeight: 1684,
 });
 
-const SA_RECEIPT_VAT_RATE = 0.14;
-const SA_RECEIPT_MONEY_DECIMALS = 2;
-
-function roundSaMoney(value) {
-  const factor = 10 ** SA_RECEIPT_MONEY_DECIMALS;
-  return Math.round((value + Number.EPSILON) * factor) / factor;
-}
-
-function formatSaMoney(value) {
-  return roundSaMoney(Number(value) || 0).toFixed(SA_RECEIPT_MONEY_DECIMALS);
-}
-
-function buildSaReceiptData(source) {
-  const items = source.items.map((item) => ({
-    description: item.description,
-    quantity: formatSaMoney(item.quantity),
-    unitPrice: formatSaMoney(item.unitPrice),
-    total: formatSaMoney(item.quantity * item.unitPrice),
-  }));
-  const salesTotal = items.reduce((sum, item) => sum + Number(item.total), 0);
-  const discountTotal = roundSaMoney(source.discountTotal ?? 0);
-  const taxableTotal = salesTotal - discountTotal;
-  const vatAmount = roundSaMoney(taxableTotal * SA_RECEIPT_VAT_RATE);
-  const netTotal = roundSaMoney(taxableTotal + vatAmount);
-  return {
-    date: source.date,
-    time: source.time,
-    receiptNumber: source.receiptNumber,
-    cashier: source.cashier,
-    registerNumber: source.registerNumber,
-    customerCode: source.customerCode,
-    transactionCustomer: source.transactionCustomer,
-    items,
-    salesTotal: formatSaMoney(salesTotal),
-    discountTotal: formatSaMoney(discountTotal),
-    vatAmount: formatSaMoney(vatAmount),
-    netTotal: formatSaMoney(netTotal),
-    paidAmount: formatSaMoney(netTotal),
-    returnAmount: "0.00",
-  };
-}
-
-const SA_RECEIPT_SOURCE_DATA = {
-  date: "2026-09-27",
-  time: "02:00 AM",
-  receiptNumber: "GLETH-000000090",
-  cashier: "حسام محمد حسام محمد",
-  registerNumber: "Glem001",
-  customerCode: "6159",
-  transactionCustomer: "زياد هشام فوزى محمود الشافعى -",
-  items: [
-    { description: "زجاجة مياه حراري ستانلس سمارت فيت Smart Fit Pink 1000ml", quantity: 15, unitPrice: 200 },
-    { description: "CASIO آلة حاسبة FX-991 ES PLUS", quantity: 150, unitPrice: 1201.754 },
-    { description: "خدمة توصيل 19891", quantity: 60, unitPrice: 0.8781 },
+const VAT_RATE = 0.14;
+const MONEY_DECIMALS = 2;
+const QR_BOUNDS = Object.freeze([88, 430, 316, 800]);
+const TABLE_START_Y = 1358;
+const TABLE_END_Y = 1638;
+const TABLE_TOP_RULE_Y = 1198;
+const TABLE_HEADING_RULE_Y = 1350;
+const TABLE_LINE_HEIGHT = 52;
+const TABLE_COLUMNS = Object.freeze([765, 260, 280, 285]);
+const TABLE_COLUMN_TOTAL = TABLE_COLUMNS.reduce((sum, width) => sum + width, 0);
+const RECEIPT_LAYOUT = Object.freeze({
+  company: { x: 1675, y: 580, width: 1275, size: 60 },
+  dateLabel: { text: "التاريخ :", x: 1510, y: 681, width: 430, size: 58 },
+  timeLabel: { text: "الوقت :", x: 790, y: 681, width: 320, size: 58 },
+  receiptLabel: { text: "رقم البون :", x: 850, y: 767, width: 420, size: 58 },
+  cashierLabel: { text: "اسم الكاشير :", x: 1450, y: 857, width: 480, size: 58 },
+  registerLabel: { text: "رقم الخزينة :", x: 1300, y: 947, width: 430, size: 58 },
+  customerCodeLabel: { text: "كود العميل :", x: 560, y: 1035, width: 440, size: 58 },
+  transactionLabel: { text: "نوع المعاملة : (اسم العميل)", x: 1675, y: 1127, width: 850, size: 58 },
+  headings: [
+    { text: "اسم الصنف", column: 0 },
+    { text: "الكمية", column: 1 },
+    { text: "السعر", column: 2 },
+    { text: "الإجمالي", column: 3 },
   ],
-  discountTotal: 0,
-};
+  totals: [
+    { path: "salesTotal", label: "إجمالي المبيعات :", y: 1720, labelWidth: 465, valueX: 1210, valueWidth: 360 },
+    { path: "discountTotal", label: "إجمالي الخصم :", y: 1810, labelWidth: 415, valueX: 1260, valueWidth: 220 },
+    { path: "vatAmount", label: "ضريبة القيمة المضافة 14% :", y: 1900, labelWidth: 800, valueX: 946, valueWidth: 320 },
+    { path: "netTotal", label: "الصافي", y: 1990, labelWidth: 195, valueX: 1460, valueWidth: 360 },
+  ],
+  paid: { label: "المدفوع", labelX: 1310, valueX: 1675, y: 2160 },
+  returnLine: { text: "استبدال وارجاع البضاعة خلال 30 يوم من خلال الفرع", y: 2290 },
+  footer: [
+    { text: "Now online store www.samirandaly.com", x: 80, y: 2534, width: 1100, direction: "ltr", family: "latin", weight: "400", size: 52 },
+    { text: "731-227-697     س.ت : 122281     ب.ض :", x: 1675, y: 2620, width: 1400, direction: "rtl", weight: "400", size: 51 },
+    { text: "في حالة الاسترجاع والاستبدال يتم من خلال الفرع المشتراة منه", x: 1675, y: 2728, width: 1675, direction: "rtl", weight: "700", size: 51 },
+    { text: "نسبة الخصم : 0.00", x: 1675, y: 2810, width: 700, direction: "rtl", weight: "400", size: 50 },
+    { text: "بون البيع", x: 1675, y: 2890, width: 400, direction: "rtl", weight: "400", size: 50 },
+  ],
+});
 
-export const SA_RECEIPT_DEFAULT_DATA = Object.freeze(buildSaReceiptData(SA_RECEIPT_SOURCE_DATA));
-
-const MONEY_PATHS = [
-  ...SA_RECEIPT_DEFAULT_DATA.items.flatMap((_, index) => [
-    `items.${index}.quantity`,
-    `items.${index}.unitPrice`,
-    `items.${index}.total`,
-  ]),
-  "salesTotal",
-  "discountTotal",
-  "vatAmount",
-  "netTotal",
-  "paidAmount",
-  "returnAmount",
-];
+const ARABIC_DIGITS = "٠١٢٣٤٥٦٧٨٩";
+const DIGIT_TRANSLATION = new Map([...ARABIC_DIGITS].map((digit, index) => [digit, String(index)]));
 const DECIMAL_PATTERN = /^\d+(?:\.\d{1,2})?$/;
 const MONEY_LABELS = {
   salesTotal: "Sales total",
@@ -98,219 +66,499 @@ const MONEY_LABELS = {
   unitPrice: "Unit price",
   total: "Line total",
 };
-
-const INK = "#111111";
-const FONT_ARABIC = '"SA Arabic", "DejaVu Sans Condensed", Arial, sans-serif';
-const FONT_LATIN = '"SA Latin", "DejaVu Sans Condensed", Arial, sans-serif';
-const FONT_TABLE_NUMBER = '"SA Latin Narrow", "Liberation Sans Narrow", Arial, sans-serif';
-const QR_BOUNDS = Object.freeze([88, 430, 316, 800]);
-const TABLE_START_Y = 1277;
-const TABLE_END_Y = 1635;
-const TABLE_TEXT_SIZE = 58;
-const TABLE_NUMBER_SIZE = 71;
-const TABLE_LINE_HEIGHT = 52;
-const TABLE_COLUMNS = Object.freeze({
-  total: [85, 370],
-  unitPrice: [380, 650],
-  quantity: [690, 910],
-  description: [1120, 1675],
-});
-const RECEIPT_LAYOUT = Object.freeze({
-  company: { text: "شركة اس اند ايه للتجارة ترحب بكم", x: 1675, y: 497, size: 60, align: "right", direction: "rtl", weight: "700" },
-  dateLabel: { text: "التاريخ :", x: 1510, y: 573, size: 58, align: "right", direction: "rtl", weight: "700" },
-  timeLabel: { text: "الوقت :", x: 790, y: 573, size: 58, align: "right", direction: "rtl", weight: "700" },
-  receiptLabel: { text: "رقم البون :", x: 850, y: 670, size: 58, align: "right", direction: "rtl", weight: "700" },
-  cashierLabel: { text: "اسم الكاشير :", x: 1450, y: 755, size: 58, align: "right", direction: "rtl", weight: "700" },
-  registerLabel: { text: "رقم الخزينة :", x: 1300, y: 845, size: 58, align: "right", direction: "rtl", weight: "700" },
-  customerCodeLabel: { text: "كود العميل :", x: 560, y: 938, size: 58, align: "right", direction: "rtl", weight: "700" },
-  transactionLabel: { text: "نوع المعاملة : (اسم العميل)", x: 1675, y: 1042, size: 58, align: "right", direction: "rtl", weight: "700" },
-  headings: [
-    { text: "الإجمالي", x: 360, y: 1225, size: 56, align: "right", direction: "rtl", weight: "700" },
-    { text: "السعر", x: 640, y: 1225, size: 56, align: "right", direction: "rtl", weight: "700" },
-    { text: "الكمية", x: 900, y: 1225, size: 56, align: "right", direction: "rtl", weight: "700" },
-    { text: "اسم الصنف", x: 1665, y: 1225, size: 56, align: "right", direction: "rtl", weight: "700" },
-  ],
-  totals: [
-    { path: "salesTotal", label: "إجمالي المبيعات :", labelX: 1675, y: 1720, labelSize: 60, size: 74, weight: "700" },
-    { path: "discountTotal", label: "إجمالي الخصم :", labelX: 1675, y: 1810, labelSize: 60, size: 74, weight: "700" },
-    { path: "vatAmount", label: "ضريبة القيمة المضافة 14% :", labelX: 1675, y: 1900, labelSize: 60, size: 74, weight: "700" },
-    { path: "netTotal", label: "الصافي", labelX: 1675, y: 1990, labelSize: 62, size: 74, weight: "700" },
-  ],
-  paid: { label: "المدفوع", labelX: 1675, y: 2160, size: 60, valueSize: 74, valueWeight: "700" },
-  returnLine: { text: "استبدال وارجاع البضاعة خلال 30 يوم من خلال الفرع", x: 80, y: 2350, size: 52, align: "left", direction: "rtl", weight: "700" },
-  footer: [
-    { text: "Now online store www.samirandaly.com", x: 80, y: 2534, size: 52, align: "left", family: "latin", weight: "400" },
-    { text: "731-227-697     س.ت : 122281     ب.ض :", x: 1675, y: 2620, size: 51, align: "right", direction: "rtl", weight: "400" },
-    { text: "في حالة الاسترجاع والاستبدال يتم من خلال الفرع المشتراة منه", x: 1675, y: 2728, size: 51, align: "right", direction: "rtl", weight: "700" },
-    { text: "نسبة الخصم : 0.00", x: 1675, y: 2810, size: 50, align: "right", direction: "rtl", weight: "400" },
-    { text: "بون البيع", x: 1675, y: 2890, size: 50, align: "right", direction: "rtl", weight: "400" },
-  ],
-});
+const SVG_NS = "http://www.w3.org/2000/svg";
 
 let qrVectorRuns = [];
 
-function normalizedText(value) {
-  return String(value ?? "").trim();
+function roundMoney(value) {
+  const factor = 10 ** MONEY_DECIMALS;
+  return Math.round((value + Number.EPSILON) * factor) / factor;
 }
 
-function getValue(data, path) {
-  return path.split(".").reduce((value, key) => value?.[key], data);
+function formatMoney(value) {
+  return roundMoney(Number(value) || 0).toFixed(MONEY_DECIMALS);
 }
 
-function wrapText(context, value, maxWidth, font, size, direction) {
-  const lines = [];
-  for (const paragraph of String(value ?? "").split(/\r?\n/u)) {
-    const words = paragraph.split(/\s+/u).filter(Boolean);
-    if (!words.length) {
-      lines.push("");
-      continue;
-    }
-    let line = words[0];
-    for (const word of words.slice(1)) {
-      const candidate = `${line} ${word}`;
-      context.font = `${font.weight} ${size}px ${font.family}`;
-      context.direction = direction;
-      if (context.measureText(candidate).width <= maxWidth) {
-        line = candidate;
-      } else {
-        lines.push(line);
-        line = word;
-      }
-    }
-    lines.push(line);
+function toWesternDigits(value) {
+  return String(value).replace(/[٠-٩]/gu, (digit) => DIGIT_TRANSLATION.get(digit));
+}
+
+function parseInvoiceAmount(value, label) {
+  const normalized = toWesternDigits(value).replace(/\s+/gu, "");
+  const lastComma = normalized.lastIndexOf(",");
+  const numberText = lastComma < 0
+    ? normalized.replace(/,/gu, "")
+    : `${normalized.slice(0, lastComma).replace(/,/gu, "")}.${normalized.slice(lastComma + 1)}`;
+  const result = Number(numberText);
+  if (!Number.isFinite(result) || result < 0) {
+    throw new Error(`Could not read the electronic tax invoice ${label}.`);
   }
-  return lines;
+  return result;
 }
 
-function line(context, x1, y, x2, width, dash = [8, 6]) {
-  context.save();
-  context.beginPath();
-  context.setLineDash(dash);
-  context.lineWidth = width;
-  context.strokeStyle = INK;
-  context.moveTo(x1, y);
-  context.lineTo(x2, y);
-  context.stroke();
-  context.restore();
-}
-
-function drawText(context, text, { x, y, size, align = "left", direction = "ltr", weight = "400", family = "arabic" }) {
-  context.save();
-  context.font = `${weight} ${size}px ${family === "latin" ? FONT_LATIN : FONT_ARABIC}`;
-  context.direction = direction;
-  context.textAlign = align;
-  context.textBaseline = "middle";
-  context.fillStyle = INK;
-  context.fillText(normalizedText(text), x, y);
-  context.restore();
-}
-
-function drawRule(context, y, dashed = true) {
-  line(context, 85, y, 1675, dashed ? 5 : 4, dashed ? [8, 5] : []);
-}
-
-function fieldText(data, path, options) {
-  return { ...options, text: getValue(data, path) };
-}
-
-function drawQrVector(context) {
-  context.save();
-  context.fillStyle = INK;
-  for (const [x, y, width] of qrVectorRuns) context.fillRect(x, y, width, 1);
-  context.restore();
-}
-
-function receiptRows(context, data) {
-  const columnWidth = TABLE_COLUMNS.description[1] - TABLE_COLUMNS.description[0] - 10;
-  const descriptionFont = { family: FONT_ARABIC, weight: "400" };
-  const rows = data.items.map((item) => ({
-    item,
-    lines: wrapText(context, item.description, columnWidth, descriptionFont, TABLE_SIZE, "rtl"),
-  }));
-  const heights = rows.map(({ lines }) => Math.max(76, lines.length * TABLE_LINE_HEIGHT + 6));
-  return { rows, heights, height: heights.reduce((sum, height) => sum + height, 0) };
-}
-
-function drawValue(context, text, x, y, size, align = "right", weight = "400", family = "latin", direction = "ltr") {
-  drawText(context, text, { x, y, size, align, direction, weight, family });
-}
-
-function drawDigitalReceipt(context, data) {
-  const rows = receiptRows(context, data);
-  context.fillStyle = "#ffffff";
-  context.fillRect(0, 0, SA_RECEIPT_PAGE.previewWidth, SA_RECEIPT_PAGE.previewHeight);
-  context.save();
-  const previewImageWidth = SA_RECEIPT_PAGE.sourceWidthPt * SA_RECEIPT_PAGE.previewScale;
-  const previewImageHeight = SA_RECEIPT_PAGE.sourceHeightPx
-    * SA_RECEIPT_PAGE.sourceWidthPt / SA_RECEIPT_PAGE.sourceWidthPx * SA_RECEIPT_PAGE.previewScale;
-  const pageLeft = (SA_RECEIPT_PAGE.widthPt - SA_RECEIPT_PAGE.sourceWidthPt) * SA_RECEIPT_PAGE.previewScale / 2;
-  context.translate(pageLeft, 0);
-  context.scale(previewImageWidth / SA_RECEIPT_PAGE.sourceWidthPx, previewImageHeight / SA_RECEIPT_PAGE.sourceHeightPx);
-
-  drawQrVector(context);
-  for (const item of [RECEIPT_LAYOUT.company, RECEIPT_LAYOUT.dateLabel, RECEIPT_LAYOUT.timeLabel,
-    RECEIPT_LAYOUT.receiptLabel, RECEIPT_LAYOUT.cashierLabel, RECEIPT_LAYOUT.registerLabel,
-    RECEIPT_LAYOUT.customerCodeLabel, RECEIPT_LAYOUT.transactionLabel]) {
-    drawText(context, item.text, item);
+function getLocalIssueDateTime(issueDate) {
+  const match = String(issueDate).match(
+    /القاهرة\s+(AM|PM)\s+([0-9٠-٩]{2}:[0-9٠-٩]{2}:[0-9٠-٩]{2})\s+([0-9٠-٩]{4}\/[0-9٠-٩]{2}\/[0-9٠-٩]{2})/u
+  );
+  if (!match) {
+    throw new Error("Could not read the Cairo-local issue date and time from the electronic tax invoice.");
   }
-  drawValue(context, data.date, 900, 573, 50, "left", "400", "latin");
-  const [clock, period] = normalizedText(data.time).split(/\s+/u);
-  drawValue(context, clock, 420, 573, 50, "left", "400", "latin");
-  drawValue(context, period, 1675, 573, 50, "right", "400", "latin");
-  drawValue(context, data.receiptNumber, 1675, 670, 50, "right", "400", "latin");
-  drawValue(context, data.cashier, 1030, 755, 52, "right", "400", "arabic", "rtl");
-  drawValue(context, data.registerNumber, 1675, 845, 50, "right", "400", "latin");
-  drawValue(context, data.customerCode, 80, 938, 50, "left", "400", "latin");
-  drawValue(context, data.transactionCustomer, 825, 1042, 50, "right", "400", "arabic", "rtl");
+  const time = toWesternDigits(match[2]).slice(0, 5);
+  const date = toWesternDigits(match[3]).replace(/\//gu, "-");
+  return { date, time: `${time} ${match[1]}` };
+}
 
-  drawRule(context, 1100);
-  for (const heading of RECEIPT_LAYOUT.headings) drawText(context, heading.text, heading);
-  drawRule(context, 1245);
-
-  let rowY = TABLE_START_Y;
-  rows.rows.forEach(({ item, lines }, index) => {
-    const rowHeight = rows.heights[index];
-    const centerY = rowY + rowHeight / 2;
-    const totalX = TABLE_COLUMNS.total[1] - 10;
-    const unitX = TABLE_COLUMNS.unitPrice[1] - 10;
-    const quantityX = TABLE_COLUMNS.quantity[1] - 10;
-    drawValue(context, item.total, totalX, centerY, TABLE_SIZE, "right", "400", "latin");
-    drawValue(context, item.unitPrice, unitX, centerY, TABLE_SIZE, "right", "400", "latin");
-    drawValue(context, item.quantity, quantityX, centerY, TABLE_SIZE, "right", "400", "latin");
-    const firstY = centerY - ((lines.length - 1) * TABLE_LINE_HEIGHT) / 2;
-    lines.forEach((text, lineIndex) => drawText(context, text, {
-      x: TABLE_COLUMNS.description[1] - 10,
-      y: firstY + lineIndex * TABLE_LINE_HEIGHT,
-      size: TABLE_SIZE,
-      align: "right",
-      direction: "rtl",
-      weight: "400",
-    }));
-    rowY += rowHeight;
+function buildReceiptData(invoice) {
+  const { date, time } = getLocalIssueDateTime(invoice.issueDate);
+  const items = invoice.items.map((item, index) => {
+    const quantityText = String(item.quantityUnit).split(/\r?\n/u, 1)[0].replace(/^\/\s*/u, "");
+    return {
+      description: item.description,
+      quantity: parseInvoiceAmount(quantityText, `row ${index + 1} quantity`),
+      unitPrice: parseInvoiceAmount(item.unitPrice, `row ${index + 1} unit price`),
+    };
   });
-  const lowerShift = Math.max(0, rows.height - (TABLE_END_Y - TABLE_START_Y));
-  drawRule(context, TABLE_START_Y + rows.height + 9);
+  const discountTotal = [
+    invoice.summary.discountTotal,
+    invoice.summary.itemDiscountTotal,
+    invoice.summary.additionalInvoiceDiscount,
+  ].reduce((sum, amount, index) => sum + parseInvoiceAmount(amount, `discount ${index + 1}`), 0);
 
-  for (const total of RECEIPT_LAYOUT.totals) {
-    drawValue(context, data[total.path], total.valueX, total.y + lowerShift, total.size, "right", total.weight || "400", "latin");
-    drawText(context, total.label, {
-      text: total.label, x: total.labelX, y: total.y + lowerShift, size: total.labelSize,
-      align: "right", direction: "rtl", weight: "700",
+  const receiptItems = items.map((item) => ({
+    description: item.description,
+    quantity: formatMoney(item.quantity),
+    unitPrice: formatMoney(item.unitPrice),
+    total: formatMoney(item.quantity * item.unitPrice),
+  }));
+  const salesTotal = receiptItems.reduce((sum, item) => sum + Number(item.total), 0);
+  const taxableTotal = salesTotal - roundMoney(discountTotal);
+  const vatAmount = roundMoney(taxableTotal * VAT_RATE);
+  const netTotal = roundMoney(taxableTotal + vatAmount);
+
+  return {
+    sellerName: invoice.seller.name,
+    date,
+    time,
+    receiptNumber: invoice.footer.internalNumber,
+    cashier: "حسام محمد حسام محمد",
+    registerNumber: "",
+    customerCode: "",
+    transactionCustomer: invoice.buyer.name,
+    items: receiptItems,
+    salesTotal: formatMoney(salesTotal),
+    discountTotal: formatMoney(discountTotal),
+    vatAmount: formatMoney(vatAmount),
+    netTotal: formatMoney(netTotal),
+    paidAmount: formatMoney(netTotal),
+    returnAmount: "0.00",
+  };
+}
+
+function sourceXPercent(x) {
+  return (SA_RECEIPT_PAGE.sourceXPt + x * SA_RECEIPT_PAGE.sourceScalePt)
+    / SA_RECEIPT_PAGE.widthPt * 100;
+}
+
+function sourceYPercent(y) {
+  return y / SA_RECEIPT_PAGE.sourceHeightPx * 100;
+}
+
+function sourceWidthPercent(width) {
+  return width * SA_RECEIPT_PAGE.sourceScalePt / SA_RECEIPT_PAGE.widthPt * 100;
+}
+
+function sourceCssUnit(value) {
+  return `${(value * SA_RECEIPT_PAGE.sourceScalePt * 100 / SA_RECEIPT_PAGE.widthPt).toFixed(5)}cqw`;
+}
+
+function sourceHeightPercent(height) {
+  return height / SA_RECEIPT_PAGE.sourceHeightPx * 100;
+}
+
+function placeElement(element, { x, y, width, size, align = "left" }) {
+  const leftX = align === "right" ? x - width : x;
+  element.style.left = `${sourceXPercent(leftX)}%`;
+  element.style.width = `${sourceWidthPercent(width)}%`;
+  element.style.top = `${sourceYPercent(y)}%`;
+  element.style.fontSize = sourceCssUnit(size);
+  element.style.lineHeight = sourceCssUnit(size);
+  element.style.textAlign = align;
+  element.style.transform = "translateY(-50%)";
+}
+
+function addText(page, value, options = {}) {
+  const element = document.createElement(options.tag || "span");
+  element.className = `sa-text${options.className ? ` ${options.className}` : ""}`;
+  element.textContent = String(value ?? "");
+  element.dir = options.direction || "rtl";
+  if (element.dir === "rtl" || element.dir === "auto") element.lang = "ar";
+  element.style.fontWeight = options.weight || "400";
+  if (options.family === "latin") element.classList.add("sa-latin");
+  if (options.multiline) element.classList.add("sa-multiline");
+  placeElement(element, options);
+  if (options.overflowLabel) {
+    element.dataset.saOverflowLabel = options.overflowLabel;
+  }
+  page.append(element);
+  return element;
+}
+
+function addRule(page, y, solid = false) {
+  const rule = document.createElement("div");
+  rule.className = `sa-rule${solid ? " sa-rule-solid" : ""}`;
+  rule.setAttribute("aria-hidden", "true");
+  rule.style.left = `${sourceXPercent(85)}%`;
+  rule.style.width = `${sourceWidthPercent(1590)}%`;
+  rule.style.top = `${sourceYPercent(y)}%`;
+  rule.style.borderTopWidth = sourceCssUnit(solid ? 4 : 5);
+  page.append(rule);
+  return rule;
+}
+
+function addQrSvg(page) {
+  const [left, top, right, bottom] = QR_BOUNDS;
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.classList.add("sa-qr-svg");
+  svg.setAttribute("viewBox", `${left} ${top} ${right - left} ${bottom - top}`);
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", "QR pattern copied from the S&A reference; payload not verified");
+  svg.style.left = `${sourceXPercent(left)}%`;
+  svg.style.top = `${sourceYPercent(top)}%`;
+  svg.style.width = `${sourceWidthPercent(right - left)}%`;
+  svg.style.height = `${sourceHeightPercent(bottom - top)}%`;
+
+  const path = document.createElementNS(SVG_NS, "path");
+  path.setAttribute("fill", "#111111");
+  path.setAttribute("shape-rendering", "crispEdges");
+  path.setAttribute("d", qrVectorRuns.map(([x, y, width]) => `M${x} ${y}h${width}v1h-${width}z`).join(""));
+  svg.append(path);
+  page.append(svg);
+}
+
+function createItemsTable(page, data) {
+  const table = document.createElement("table");
+  table.className = "sa-items-table";
+  table.setAttribute("aria-label", "Receipt items");
+  table.style.left = `${sourceXPercent(85)}%`;
+  table.style.width = `${sourceWidthPercent(TABLE_COLUMN_TOTAL)}%`;
+  table.style.top = `${sourceYPercent(1198)}%`;
+  table.style.setProperty("--sa-header-height", sourceCssUnit(160));
+  table.style.setProperty("--sa-header-padding", sourceCssUnit(48));
+  table.style.setProperty("--sa-cell-min-height", sourceCssUnit(64));
+  table.style.setProperty("--sa-cell-padding", sourceCssUnit(3));
+  table.style.setProperty("--sa-table-font-size", sourceCssUnit(58));
+  table.style.setProperty("--sa-table-line-height", sourceCssUnit(TABLE_LINE_HEIGHT));
+  table.style.setProperty("--sa-rule-width", sourceCssUnit(5));
+
+  const colgroup = document.createElement("colgroup");
+  for (const width of TABLE_COLUMNS) {
+    const col = document.createElement("col");
+    col.style.width = `${width / TABLE_COLUMN_TOTAL * 100}%`;
+    colgroup.append(col);
+  }
+  table.append(colgroup);
+
+  const head = document.createElement("thead");
+  const headingRow = document.createElement("tr");
+  for (const heading of RECEIPT_LAYOUT.headings) {
+    const cell = document.createElement("th");
+    cell.scope = "col";
+    cell.textContent = heading.text;
+    cell.dir = "rtl";
+    cell.lang = "ar";
+    cell.style.fontSize = sourceCssUnit(56);
+    cell.style.lineHeight = sourceCssUnit(56);
+    headingRow.append(cell);
+  }
+  head.append(headingRow);
+  table.append(head);
+
+  const body = document.createElement("tbody");
+  data.items.forEach((item, index) => {
+    const row = document.createElement("tr");
+    row.className = "sa-item-row";
+
+    const descriptionCell = document.createElement("td");
+    const description = document.createElement("div");
+    description.className = "sa-cell-content sa-item-description";
+    description.textContent = item.description;
+    description.dir = "auto";
+    description.lang = "ar";
+    description.dataset.saItemDescription = "";
+    descriptionCell.append(description);
+    row.append(descriptionCell);
+
+    const numberCells = [
+      { value: item.quantity, label: `Row ${index + 1} quantity` },
+      { value: item.unitPrice, label: `Row ${index + 1} unit price` },
+      { value: item.total, label: `Row ${index + 1} line total` },
+    ];
+    for (const cellData of numberCells) {
+      const cell = document.createElement("td");
+      const value = document.createElement("div");
+      value.className = "sa-cell-content sa-latin sa-item-number";
+      value.textContent = cellData.value;
+      value.dir = "ltr";
+      value.dataset.saOverflowLabel = cellData.label;
+      cell.append(value);
+      row.append(cell);
+    }
+    body.append(row);
+  });
+  table.append(body);
+  page.append(table);
+  return table;
+}
+
+function renderReceiptContent(page, data) {
+  page.replaceChildren();
+  page.classList.add("sa-page");
+  page.lang = "ar";
+  page.dir = "rtl";
+  page.setAttribute("aria-label", "S&A electronic tax receipt preview");
+
+  addQrSvg(page);
+  addText(page, `شركة ${data.sellerName} ترحب بكم`, {
+    className: "sa-company",
+    x: RECEIPT_LAYOUT.company.x,
+    y: RECEIPT_LAYOUT.company.y,
+    width: RECEIPT_LAYOUT.company.width,
+    size: RECEIPT_LAYOUT.company.size,
+    align: "right",
+    weight: "700",
+    overflowLabel: "Seller name",
+  });
+
+  const headerLabels = [
+    ["dateLabel", RECEIPT_LAYOUT.dateLabel],
+    ["timeLabel", RECEIPT_LAYOUT.timeLabel],
+    ["receiptLabel", RECEIPT_LAYOUT.receiptLabel],
+    ["registerLabel", RECEIPT_LAYOUT.registerLabel],
+    ["customerCodeLabel", RECEIPT_LAYOUT.customerCodeLabel],
+    ["transactionLabel", RECEIPT_LAYOUT.transactionLabel],
+  ];
+  for (const [key, layout] of headerLabels) {
+    addText(page, layout.text, {
+      className: "sa-label",
+      x: layout.x,
+      y: layout.y,
+      width: layout.width,
+      size: layout.size,
+      align: "right",
+      weight: "400",
     });
   }
-  drawRule(context, 2085 + lowerShift);
-  drawText(context, RECEIPT_LAYOUT.paid.label, {
-    text: RECEIPT_LAYOUT.paid.label, x: RECEIPT_LAYOUT.paid.labelX, y: RECEIPT_LAYOUT.paid.y + lowerShift,
-    size: RECEIPT_LAYOUT.paid.size, align: "right", direction: "rtl", weight: "700",
+
+  const cashierRow = document.createElement("div");
+  cashierRow.className = "sa-text sa-cashier-row";
+  cashierRow.dir = "rtl";
+  placeElement(cashierRow, {
+    x: RECEIPT_LAYOUT.cashierLabel.x,
+    y: RECEIPT_LAYOUT.cashierLabel.y,
+    width: RECEIPT_LAYOUT.cashierLabel.width + 580 + 16,
+    size: RECEIPT_LAYOUT.cashierLabel.size,
+    align: "right",
   });
-  drawValue(context, data.paidAmount, RECEIPT_LAYOUT.paid.valueX, RECEIPT_LAYOUT.paid.y + lowerShift, 52, "right", "400", "latin");
-  drawRule(context, 2244 + lowerShift);
-  drawValue(context, data.returnAmount, 1675, 2350 + lowerShift, 50, "right", "400", "latin");
-  drawText(context, RECEIPT_LAYOUT.returnLine.text, { ...RECEIPT_LAYOUT.returnLine, y: RECEIPT_LAYOUT.returnLine.y + lowerShift });
-  drawRule(context, 2424 + lowerShift, false);
-  for (const item of RECEIPT_LAYOUT.footer) drawText(context, item.text, { ...item, y: item.y + lowerShift });
-  context.restore();
-  return rows;
+  cashierRow.style.gap = sourceCssUnit(16);
+
+  const cashierLabel = document.createElement("span");
+  cashierLabel.textContent = RECEIPT_LAYOUT.cashierLabel.text;
+  cashierLabel.dir = "rtl";
+  cashierLabel.lang = "ar";
+  cashierLabel.style.fontSize = sourceCssUnit(RECEIPT_LAYOUT.cashierLabel.size);
+  cashierLabel.style.lineHeight = sourceCssUnit(RECEIPT_LAYOUT.cashierLabel.size);
+
+  const cashierValue = document.createElement("span");
+  cashierValue.className = "sa-cashier-value";
+  cashierValue.textContent = data.cashier;
+  cashierValue.dir = "rtl";
+  cashierValue.lang = "ar";
+  cashierValue.style.fontSize = sourceCssUnit(52);
+  cashierValue.style.lineHeight = sourceCssUnit(52);
+
+  cashierRow.append(cashierLabel, cashierValue);
+  page.append(cashierRow);
+
+  const [clock, period] = String(data.time).trim().split(/\s+/u);
+  addText(page, data.date, {
+    className: "sa-value sa-latin",
+    x: 900,
+    y: 681,
+    width: 570,
+    size: 50,
+    align: "left",
+    direction: "ltr",
+    family: "latin",
+    overflowLabel: "Date",
+  });
+  addText(page, clock, {
+    className: "sa-value sa-latin",
+    x: 420,
+    y: 681,
+    width: 320,
+    size: 50,
+    align: "left",
+    direction: "ltr",
+    family: "latin",
+    overflowLabel: "Time",
+  });
+  addText(page, period, {
+    className: "sa-value sa-latin",
+    x: 1675,
+    y: 681,
+    width: 120,
+    size: 50,
+    align: "right",
+    direction: "ltr",
+    family: "latin",
+    overflowLabel: "Time period",
+  });
+  addText(page, data.receiptNumber, {
+    className: "sa-value sa-latin",
+    x: 1675,
+    y: 767,
+    width: 800,
+    size: 50,
+    align: "right",
+    direction: "ltr",
+    family: "latin",
+    overflowLabel: "Receipt number",
+  });
+  addText(page, data.registerNumber, {
+    className: "sa-value sa-latin",
+    x: 1675,
+    y: 947,
+    width: 370,
+    size: 50,
+    align: "right",
+    direction: "ltr",
+    family: "latin",
+    overflowLabel: "Register / till number",
+  });
+  addText(page, data.customerCode, {
+    className: "sa-value sa-latin",
+    x: 560,
+    y: 1035,
+    width: 300,
+    size: 50,
+    align: "right",
+    direction: "ltr",
+    family: "latin",
+    overflowLabel: "Customer code",
+  });
+  addText(page, data.transactionCustomer, {
+    className: "sa-value",
+    x: 825,
+    y: 1127,
+    width: 800,
+    size: 50,
+    align: "right",
+    overflowLabel: "Customer / transaction text",
+  });
+
+  addRule(page, TABLE_TOP_RULE_Y);
+  const table = createItemsTable(page, data);
+  addRule(page, TABLE_HEADING_RULE_Y);
+  addRule(page, TABLE_END_Y).classList.add("sa-table-bottom-rule");
+
+  for (const total of RECEIPT_LAYOUT.totals) {
+    addText(page, data[total.path], {
+      className: "sa-value sa-latin sa-total-value",
+      x: total.valueX,
+      y: total.y,
+      width: total.valueWidth,
+      size: 60,
+      align: "right",
+      direction: "ltr",
+      family: "latin",
+      overflowLabel: MONEY_LABELS[total.path],
+    });
+    addText(page, total.label, {
+      className: "sa-label sa-total-label",
+      x: 1675,
+      y: total.y,
+      width: total.labelWidth,
+      size: 50,
+      align: "right",
+      weight: "700",
+    });
+  }
+
+  const paid = RECEIPT_LAYOUT.paid;
+  addRule(page, 2085);
+  addText(page, data.paidAmount, {
+    className: "sa-value sa-latin sa-total-value",
+    x: paid.valueX,
+    y: paid.y,
+    width: 370,
+    size: 60,
+    align: "right",
+    direction: "ltr",
+    family: "latin",
+    overflowLabel: "Paid amount",
+  });
+  addText(page, paid.label, {
+    className: "sa-label",
+    x: paid.labelX,
+    y: paid.y,
+    width: 280,
+    size: 50,
+    align: "right",
+    weight: "700",
+  });
+  addRule(page, 2244);
+  const returnRow = document.createElement("div");
+  returnRow.className = "sa-text sa-return-row";
+  returnRow.dir = "ltr";
+  placeElement(returnRow, { x: 1675, y: RECEIPT_LAYOUT.returnLine.y, width: 1590, size: 52, align: "right" });
+  returnRow.style.gap = sourceCssUnit(28);
+
+  const returnPolicy = document.createElement("span");
+  returnPolicy.className = "sa-return-policy";
+  returnPolicy.textContent = RECEIPT_LAYOUT.returnLine.text;
+  returnPolicy.dir = "rtl";
+  returnPolicy.lang = "ar";
+  returnPolicy.style.fontSize = sourceCssUnit(52);
+  returnPolicy.style.lineHeight = sourceCssUnit(52);
+  returnPolicy.style.fontWeight = "700";
+
+  const returnAmount = document.createElement("span");
+  returnAmount.className = "sa-latin";
+  returnAmount.textContent = data.returnAmount;
+  returnAmount.dir = "ltr";
+  returnAmount.style.fontSize = sourceCssUnit(50);
+  returnAmount.style.lineHeight = sourceCssUnit(50);
+
+  returnRow.append(returnPolicy, returnAmount);
+  page.append(returnRow);
+  addRule(page, 2424, true);
+  for (const item of RECEIPT_LAYOUT.footer) {
+    addText(page, item.text, {
+      className: `sa-footer-text${item.family === "latin" ? " sa-latin" : ""}`,
+      x: item.x,
+      y: item.y,
+      width: item.width,
+      size: item.size,
+      align: item.direction === "ltr" ? "left" : "right",
+      direction: item.direction,
+      weight: item.weight,
+      family: item.family,
+    });
+  }
+  return table;
+}
+
+function measureReceiptLayout(page, table) {
+  const pageBounds = page.getBoundingClientRect();
+  const rowHeight = [...table.querySelectorAll(".sa-item-row")].reduce((sum, row) => {
+    return sum + row.getBoundingClientRect().height / pageBounds.height * SA_RECEIPT_PAGE.sourceHeightPx;
+  }, 0);
+  return { rowHeight, availableTableHeight: TABLE_END_Y - TABLE_START_Y };
+}
+
+export function renderSaReceiptPage(page, data) {
+  const table = renderReceiptContent(page, data);
+  return measureReceiptLayout(page, table);
 }
 
 export function setSaReceiptQrVector(sourceContext) {
@@ -323,7 +571,10 @@ export function setSaReceiptQrVector(sourceContext) {
     let runStart = -1;
     for (let x = 0; x <= width; x++) {
       const index = (y * width + x) * 4;
-      const dark = x < width && pixels[index] < 115 && pixels[index + 1] < 115 && pixels[index + 2] < 115;
+      const dark = x < width
+        && pixels[index] < 115
+        && pixels[index + 1] < 115
+        && pixels[index + 2] < 115;
       if (dark && runStart < 0) runStart = x;
       if (!dark && runStart >= 0) {
         runs.push([left + runStart, top + y, x - runStart]);
@@ -331,138 +582,18 @@ export function setSaReceiptQrVector(sourceContext) {
       }
     }
   }
+  if (runs.length === 0) {
+    throw new Error("The S&A reference QR pattern could not be traced.");
+  }
   qrVectorRuns = runs;
   return runs.length;
 }
 
-export function validateSaReceiptLayout(context, data) {
-  const errors = [...validateSaReceipt(data).errors];
-  const rows = receiptRows(context, data);
-  const lowerShift = Math.max(0, rows.height - (TABLE_END_Y - TABLE_START_Y));
-  const lastFooter = RECEIPT_LAYOUT.footer.at(-1);
-  if (lastFooter.y + lowerShift + lastFooter.size * 0.8 > SA_RECEIPT_PAGE.sourceHeightPx) {
-    errors.push("Item descriptions push the receipt footer beyond the page at the reference font size.");
+export function createSaReceiptData(invoice) {
+  if (!invoice?.seller?.name || !invoice?.buyer?.name || !invoice?.items?.length) {
+    throw new Error("The electronic tax invoice does not contain the receipt's required seller, buyer, and item data.");
   }
-  context.font = `400 52px ${FONT_ARABIC}`;
-  const customerWidth = context.measureText(data.transactionCustomer).width;
-  if (customerWidth > 745) errors.push("Customer / transaction text does not fit at the reference font size.");
-  return { errors, rows };
-}
-
-export function renderSaReceiptPage(context, data) {
-  context.clearRect(0, 0, SA_RECEIPT_PAGE.previewWidth, SA_RECEIPT_PAGE.previewHeight);
-  return drawDigitalReceipt(context, data);
-}
-
-export function renderSaReceiptPdfPage(page, fonts, data) {
-  const { regular, bold, latinRegular, latinBold } = fonts;
-  const scale = SA_RECEIPT_PAGE.sourceScalePt;
-  const pageLeft = SA_RECEIPT_PAGE.sourceXPt;
-  const toX = (x) => pageLeft + x * scale;
-  const toY = (y) => SA_RECEIPT_PAGE.heightPt - y * scale;
-  const black = window.PDFLib.rgb(0.07, 0.07, 0.07);
-  const rows = receiptRows(document.createElement("canvas").getContext("2d"), data);
-  const lowerShift = Math.max(0, rows.height - (TABLE_END_Y - TABLE_START_Y));
-  const text = (value, x, y, sizePx, options = {}) => {
-    const valueText = normalizedText(value);
-    const size = sizePx * scale;
-    const yPt = toY(y) - size * 0.35;
-    const chooseFont = (valueRun, forceFamily = options.family) => {
-      const isArabic = /[\u0600-\u06ff\u0750-\u077f\u08a0-\u08ff]/u.test(valueRun);
-      const family = forceFamily || (isArabic ? "arabic" : "latin");
-      return family === "latin"
-        ? (options.weight === "700" ? latinBold : latinRegular)
-        : (options.weight === "700" ? bold : regular);
-    };
-    const drawRun = (valueRun, xPt, font) => page.drawText(valueRun, { x: xPt, y: yPt, size, font, color: black });
-
-    if (options.direction === "rtl") {
-      const runs = valueText.match(/[\p{Script=Arabic}\u0750-\u077f\u08a0-\u08ff]+|[A-Za-z0-9]+%?|[^\p{Script=Arabic}A-Za-z0-9]+/gu) || [valueText];
-      const visualRuns = [...runs].reverse();
-      const widths = visualRuns.map((run) => chooseFont(run).widthOfTextAtSize(run, size));
-      const totalWidth = widths.reduce((sum, width) => sum + width, 0);
-      let right = options.align === "left" ? toX(x) + totalWidth : toX(x);
-      for (let index = 0; index < visualRuns.length; index++) {
-        const run = visualRuns[index];
-        const width = widths[index];
-        if (!/^\s+$/u.test(run)) drawRun(run, right - width, chooseFont(run));
-        right -= width;
-      }
-      return;
-    }
-
-    const font = chooseFont(valueText);
-    const width = font.widthOfTextAtSize(valueText, size);
-    const xPt = toX(x) - (options.align === "right" ? width : options.align === "center" ? width / 2 : 0);
-    drawRun(valueText, xPt, font);
-  };
-  const drawPdfRule = (y, dashed = true) => {
-    const x1 = toX(85);
-    const x2 = toX(1675);
-    const lineWidth = (dashed ? 5 : 4) * scale;
-    if (!dashed) {
-      page.drawLine({ start: { x: x1, y: toY(y) }, end: { x: x2, y: toY(y) }, thickness: lineWidth, color: black });
-      return;
-    }
-    const dash = 8 * scale;
-    const gap = 5 * scale;
-    for (let x = x1; x < x2; x += dash + gap) {
-      page.drawLine({ start: { x, y: toY(y) }, end: { x: Math.min(x + dash, x2), y: toY(y) }, thickness: lineWidth, color: black });
-    }
-  };
-
-  page.drawRectangle({ x: 0, y: 0, width: SA_RECEIPT_PAGE.widthPt, height: SA_RECEIPT_PAGE.heightPt, color: window.PDFLib.rgb(1, 1, 1) });
-  for (const [x, y, width] of qrVectorRuns) {
-    page.drawRectangle({ x: toX(x), y: toY(y + 1), width: width * scale, height: scale, color: black });
-  }
-  const staticLabels = [RECEIPT_LAYOUT.company, RECEIPT_LAYOUT.dateLabel, RECEIPT_LAYOUT.timeLabel,
-    RECEIPT_LAYOUT.receiptLabel, RECEIPT_LAYOUT.cashierLabel, RECEIPT_LAYOUT.registerLabel,
-    RECEIPT_LAYOUT.customerCodeLabel, RECEIPT_LAYOUT.transactionLabel, ...RECEIPT_LAYOUT.headings];
-  for (const item of staticLabels) text(item.text, item.x, item.y, item.size, {
-    align: item.align, direction: item.direction, weight: item.weight, family: item.family,
-  });
-  text(data.date, 900, 573, 50, { align: "left", family: "latin" });
-  const [clock, period] = normalizedText(data.time).split(/\s+/u);
-  text(clock, 420, 573, 50, { family: "latin" });
-  text(period, 1675, 573, 50, { align: "right", family: "latin" });
-  text(data.receiptNumber, 1675, 670, 50, { align: "right", family: "latin" });
-  text(data.cashier, 1030, 755, 52, { align: "right", direction: "rtl" });
-  text(data.registerNumber, 1675, 845, 50, { align: "right", family: "latin" });
-  text(data.customerCode, 80, 938, 50, { family: "latin" });
-  text(data.transactionCustomer, 825, 1042, 50, { align: "right", direction: "rtl" });
-  drawPdfRule(1100);
-  drawPdfRule(1245);
-  let rowY = TABLE_START_Y;
-  rows.rows.forEach(({ item, lines }, index) => {
-    const rowHeight = rows.heights[index];
-    const centerY = rowY + rowHeight / 2;
-    text(item.total, TABLE_COLUMNS.total[1] - 10, centerY, TABLE_SIZE, { align: "right", family: "latin" });
-    text(item.unitPrice, TABLE_COLUMNS.unitPrice[1] - 10, centerY, TABLE_SIZE, { align: "right", family: "latin" });
-    text(item.quantity, TABLE_COLUMNS.quantity[1] - 10, centerY, TABLE_SIZE, { align: "right", family: "latin" });
-    const firstY = centerY - ((lines.length - 1) * TABLE_LINE_HEIGHT) / 2;
-    lines.forEach((value, lineIndex) => text(value, TABLE_COLUMNS.description[1] - 10,
-      firstY + lineIndex * TABLE_LINE_HEIGHT, TABLE_SIZE, { align: "right", direction: "rtl" }));
-    rowY += rowHeight;
-  });
-  drawPdfRule(TABLE_START_Y + rows.height + 9);
-  for (const total of RECEIPT_LAYOUT.totals) {
-    text(data[total.path], total.valueX, total.y + lowerShift, total.size, { align: "right", weight: total.weight, family: "latin" });
-    text(total.label, total.labelX, total.y + lowerShift, total.labelSize, { align: "right", weight: "700", direction: "rtl" });
-  }
-  drawPdfRule(2085 + lowerShift);
-  text(RECEIPT_LAYOUT.paid.label, RECEIPT_LAYOUT.paid.labelX, RECEIPT_LAYOUT.paid.y + lowerShift, RECEIPT_LAYOUT.paid.size, { align: "right", weight: "700", direction: "rtl" });
-  text(data.paidAmount, RECEIPT_LAYOUT.paid.valueX, RECEIPT_LAYOUT.paid.y + lowerShift, 52, { align: "right", family: "latin" });
-  drawPdfRule(2244 + lowerShift);
-  text(data.returnAmount, 1675, 2350 + lowerShift, 50, { align: "right", family: "latin" });
-  text(RECEIPT_LAYOUT.returnLine.text, RECEIPT_LAYOUT.returnLine.x, RECEIPT_LAYOUT.returnLine.y + lowerShift, RECEIPT_LAYOUT.returnLine.size, { align: "left", weight: "700", direction: "rtl" });
-  drawPdfRule(2424 + lowerShift, false);
-  for (const item of RECEIPT_LAYOUT.footer) text(item.text, item.x, item.y + lowerShift, item.size, {
-    align: item.align, weight: item.weight, family: item.family, direction: item.direction,
-  });
-}
-
-export function createSaReceiptData() {
-  return structuredClone(SA_RECEIPT_DEFAULT_DATA);
+  return buildReceiptData(invoice);
 }
 
 export function getSaReceiptValue(data, path) {
@@ -476,15 +607,24 @@ export function setSaReceiptValue(data, path, value) {
   target[lastPart] = value;
 }
 
-export function saReceiptHasChanges(data) {
-  return JSON.stringify(data) !== JSON.stringify(SA_RECEIPT_DEFAULT_DATA);
-}
-
 export function validateSaReceipt(data) {
-  for (const path of MONEY_PATHS) {
+  const moneyPaths = [
+    ...data.items.flatMap((_, index) => [
+      `items.${index}.quantity`,
+      `items.${index}.unitPrice`,
+      `items.${index}.total`,
+    ]),
+    "salesTotal",
+    "discountTotal",
+    "vatAmount",
+    "netTotal",
+    "paidAmount",
+    "returnAmount",
+  ];
+  for (const path of moneyPaths) {
     const value = String(getSaReceiptValue(data, path)).trim();
     if (!DECIMAL_PATTERN.test(value)) {
-      const itemMatch = path.match(/^items\.(\d+)\.(quantity|unitPrice|total)$/);
+      const itemMatch = path.match(/^items\.(\d+)\.(quantity|unitPrice|total)$/u);
       const label = itemMatch
         ? `Row ${Number(itemMatch[1]) + 1} ${MONEY_LABELS[itemMatch[2]]}`
         : MONEY_LABELS[path];
@@ -492,6 +632,32 @@ export function validateSaReceipt(data) {
     }
   }
   return { errors: [] };
+}
+
+export function validateSaReceiptLayout(page, data) {
+  const errors = [...validateSaReceipt(data).errors];
+  if (errors.length > 0) return { errors };
+
+  const table = page.querySelector(".sa-items-table");
+  const pageBounds = page.getBoundingClientRect();
+  const rowHeight = [...table.querySelectorAll(".sa-item-row")].reduce((sum, row) => {
+    return sum + row.getBoundingClientRect().height / pageBounds.height * SA_RECEIPT_PAGE.sourceHeightPx;
+  }, 0);
+  if (rowHeight > TABLE_END_Y - TABLE_START_Y + 1) {
+    errors.push("Item descriptions exceed the fixed table area; shorten them to preserve the reference layout.");
+  }
+
+  for (const element of page.querySelectorAll("[data-sa-overflow-label]")) {
+    if (element.textContent.trim() && element.scrollWidth > element.clientWidth + 1) {
+      errors.push(`${element.dataset.saOverflowLabel} does not fit at the reference font size.`);
+    }
+  }
+
+  const lastFooter = page.querySelector(".sa-footer-text:last-child");
+  if (lastFooter && lastFooter.getBoundingClientRect().bottom > pageBounds.bottom + 0.5) {
+    errors.push("Receipt footer text extends beyond the page.");
+  }
+  return { errors };
 }
 
 function appendControl(parent, { label, path, value, direction = "ltr", inputMode, maxLength = 100 }) {
@@ -528,6 +694,7 @@ export function createSaReceiptControls(container, data) {
   container.replaceChildren();
 
   const details = createFieldset(container, "Receipt details", "sa-receipt-details");
+  appendControl(details, { label: "Seller / company name", path: "sellerName", value: data.sellerName, direction: "rtl", maxLength: 80 });
   appendControl(details, { label: "Date", path: "date", value: data.date, maxLength: 30 });
   appendControl(details, { label: "Time", path: "time", value: data.time, maxLength: 30 });
   appendControl(details, { label: "Receipt number", path: "receiptNumber", value: data.receiptNumber, maxLength: 50 });
@@ -542,15 +709,15 @@ export function createSaReceiptControls(container, data) {
     maxLength: 120,
   });
 
-  const items = createFieldset(container, "Three receipt items", "invoice-section-sa-items");
+  const items = createFieldset(container, "Receipt items", "invoice-section-sa-items");
   const note = document.createElement("p");
   note.className = "invoice-calculation-note";
-  note.textContent = "Quantity, unit price, and line total are independent values; changing one does not recalculate another.";
+  note.textContent = "Item details come from the electronic tax invoice. Receipt amounts are displayed to two decimals; each value remains independently editable.";
   items.append(note);
 
   data.items.forEach((item, index) => {
     const row = createFieldset(items, `Row ${index + 1}`, "invoice-item-row");
-    appendControl(row, { label: "Item description", path: `items.${index}.description`, value: item.description, direction: "rtl", maxLength: 120 });
+    appendControl(row, { label: "Item description", path: `items.${index}.description`, value: item.description, direction: "rtl", maxLength: 160 });
     appendControl(row, { label: "Quantity", path: `items.${index}.quantity`, value: item.quantity, inputMode: "decimal", maxLength: 20 });
     appendControl(row, { label: "Unit price", path: `items.${index}.unitPrice`, value: item.unitPrice, inputMode: "decimal", maxLength: 20 });
     appendControl(row, { label: "Line total", path: `items.${index}.total`, value: item.total, inputMode: "decimal", maxLength: 20 });

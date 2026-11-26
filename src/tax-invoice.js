@@ -6,7 +6,9 @@ export const TAX_INVOICE_PAGE = Object.freeze({
   scale: 4,
 });
 
+const TAX_INVOICE_FONT_FAMILY = "Electronic Invoice DejaVu Sans";
 const TAX_INVOICE_TABLE_FONT_SIZE = 4.8;
+const TAX_INVOICE_TABLE_CLEAR_AREA = Object.freeze({ x: 298, y: 1275, width: 1800, height: 1024 });
 
 const TAX_INVOICE_AMOUNT_DECIMALS = 5;
 const TAX_INVOICE_VAT_RATE = 0.14;
@@ -129,19 +131,19 @@ export const TAX_INVOICE_FIELDS = [
   { group: "Header", path: "status", label: "Invoice status", cover: [482, 34.1, 499, 42], box: [482.7, 34.5, 498.5, 41.5], size: 7.6, minSize: 5.2, align: "right", direction: "rtl", weight: "700", fill: "#ffffff" },
   { group: "Header", path: "submissionDate", label: "Submission date and time", cover: [344.5, 47.2, 487.4, 55.5], box: [345.5, 47.4, 486, 55], size: 6.2, minSize: 4.8, align: "left", direction: "ltr", color: "#666666", fill: "#ffffff", bidiIsolate: true },
   { group: "Header", path: "issueDate", label: "Issue date and time", cover: [324.4, 60.4, 487.4, 68.5], box: [325.1, 60.7, 486, 68], size: 6.2, minSize: 4.8, align: "left", direction: "ltr", color: "#666666", fill: "#ffffff", bidiIsolate: true },
-  { group: "Seller", path: "seller.name", label: "Seller name", cover: [430, 126.7, 493.6, 135], box: [430.7, 127.3, 492.5, 134], size: 8.3, minSize: 5.5, align: "right", direction: "rtl", weight: "700", fill: "#f9f9f9" },
-  { group: "Seller", path: "seller.registration", label: "Seller registration number", cover: [429.5, 137.5, 475.7, 145.5], box: [430.5, 138, 475, 145], size: 8.2, minSize: 5.5, align: "right", direction: "ltr", weight: "700", fill: "#f9f9f9" },
-  { group: "Seller", path: "seller.activityCode", label: "Seller tax activity code", cover: [207.8, 148.4, 225, 156.2], box: [208.5, 149, 224.2, 155.8], size: 8, minSize: 5.5, align: "right", direction: "ltr", fill: "#f9f9f9" },
-  { group: "Seller", path: "seller.address", label: "Seller address", multiline: true, cover: [319, 159.2, 513, 167.1], box: [320, 159.6, 512.5, 166.5], size: 7.8, minSize: 5, align: "right", direction: "rtl", fill: "#f9f9f9" },
-  { group: "Seller", path: "seller.locality", label: "Seller locality", cover: [464.5, 170.2, 513, 177.5], box: [465, 170.7, 512.5, 177], size: 7.8, minSize: 5, align: "right", direction: "rtl", fill: "#f9f9f9" },
-  { group: "References", path: "references.electronicId", label: "Electronic invoice ID", cover: [359, 217.1, 469.3, 224.7], box: [360, 217.6, 468.5, 224], size: 7.3, minSize: 5.2, align: "right", direction: "ltr", fill: "#ffffff" },
+  { group: "Seller", path: "seller.name", label: "Seller name", cover: [430, 126.7, 493.6, 135], box: [430.7, 127.3, 492.5, 134], size: 5.1, minSize: 4.4, align: "right", direction: "rtl", weight: "700", scaleX: 0.94, fill: "#f9f9f9" },
+  { group: "Seller", path: "seller.registration", label: "Seller registration number", cover: [429.5, 137.5, 475.7, 145.5], box: [430.5, 138, 475, 145], size: 4.8, minSize: 4.5, align: "right", direction: "ltr", weight: "700", fill: "#f9f9f9" },
+  { group: "Seller", path: "seller.activityCode", label: "Seller tax activity code", cover: [207.8, 148.4, 225, 156.2], box: [208.5, 149, 224.2, 155.8], size: 4.8, minSize: 4.5, align: "right", direction: "ltr", fill: "#f9f9f9" },
+  { group: "Seller", path: "seller.address", label: "Seller address", multiline: true, cover: [319, 159.2, 513, 167.1], box: [320, 159.6, 512.5, 166.5], size: 5, minSize: 4.4, align: "right", direction: "rtl", scaleX: 0.93, fill: "#f9f9f9" },
+  { group: "Seller", path: "seller.locality", label: "Seller locality", cover: [464.5, 170.2, 513, 177.5], box: [465, 170.7, 512.5, 177], size: 5.1, minSize: 4.6, align: "right", direction: "rtl", scaleX: 0.97, fill: "#f9f9f9" },
+  { group: "References", path: "references.electronicId", label: "Electronic invoice ID", cover: [359, 217.1, 469.3, 224.7], box: [360, 217.6, 468.5, 224], size: 4.3, minSize: 4.3, align: "right", direction: "ltr", scaleX: 1.1, fill: "#ffffff" },
   { group: "References", path: "references.provisionalExportInvoiceNumber", label: "Provisional export invoice number", cover: [76, 216.9, 190, 224.8], box: [77, 217.5, 189, 224], size: 7.5, minSize: 5, align: "left", direction: "ltr", fill: "#ffffff" },
   { group: "References", path: "references.salesOrderReference", label: "Sales order reference", cover: [76, 227.8, 210, 235.5], box: [77, 228.2, 209, 234.8], size: 7.5, minSize: 5, align: "left", direction: "ltr", fill: "#ffffff" },
   { group: "References", path: "references.purchaseOrderReference", label: "Purchase order reference", cover: [266, 227.8, 466, 235.5], box: [267, 228.2, 465, 234.8], size: 7.5, minSize: 5, align: "right", direction: "rtl", fill: "#ffffff" },
-  { group: "Buyer", path: "buyer.name", label: "Buyer name", cover: [379, 263.9, 499.3, 271.4], box: [380, 264.3, 498.5, 271], size: 8.1, minSize: 5.5, align: "right", direction: "rtl", weight: "700", fill: "#ffffff" },
-  { group: "Buyer", path: "buyer.registration", label: "Buyer registration number", cover: [435, 274.8, 480, 282], box: [436, 275.2, 479.4, 281.6], size: 8.1, minSize: 5.5, align: "right", direction: "ltr", weight: "700", fill: "#ffffff" },
-  { group: "Buyer", path: "buyer.address", label: "Buyer address", cover: [399, 296.4, 516, 303.8], box: [400, 296.8, 515.5, 303.4], size: 7.8, minSize: 5.2, align: "right", direction: "rtl", fill: "#ffffff" },
-  { group: "Buyer", path: "buyer.locality", label: "Buyer locality", cover: [479, 307.2, 516, 314.6], box: [480, 307.6, 515.5, 314.2], size: 7.8, minSize: 5.2, align: "right", direction: "ltr", fill: "#ffffff" },
+  { group: "Buyer", path: "buyer.name", label: "Buyer name", cover: [379, 263.9, 499.3, 271.4], box: [380, 264.3, 498.5, 271], size: 5, minSize: 4.5, align: "right", direction: "rtl", weight: "700", scaleX: 0.85, fill: "#ffffff" },
+  { group: "Buyer", path: "buyer.registration", label: "Buyer registration number", cover: [435, 274.8, 480, 282], box: [436, 275.2, 479.4, 281.6], size: 4.8, minSize: 4.5, align: "right", direction: "ltr", weight: "700", fill: "#ffffff" },
+  { group: "Buyer", path: "buyer.address", label: "Buyer address", cover: [399, 296.4, 516, 303.8], box: [400, 296.8, 515.5, 303.4], size: 5, minSize: 4.8, align: "right", direction: "rtl", scaleX: 0.95, fill: "#ffffff" },
+  { group: "Buyer", path: "buyer.locality", label: "Buyer locality", cover: [479, 307.2, 516, 314.6], box: [480, 307.6, 515.5, 314.2], size: 4.4, minSize: 4.3, align: "right", direction: "ltr", scaleX: 1.05, fill: "#ffffff" },
   ...[
     { name: "Item 1", y: 357.8, y1: 403.5, valueY: 380.7, quantityBaselines: [375.3, 386.1], baselines: [370, 380.8, 391.6, 402.4] },
     { name: "Item 2", y: 407.8, y1: 432.4, valueY: 420.3, quantityBaselines: [414.9, 425.7], baselines: [420.4, 431.2] },
@@ -179,9 +181,9 @@ export const TAX_INVOICE_FIELDS = [
     weight: key === "grandTotal" ? "700" : "400",
     fill: "#ffffff",
   })),
-  { group: "Footer", path: "footer.internalNumber", label: "Internal number", cover: [435, 600.6, 489.5, 608.3], box: [436, 601, 488.8, 607.8], size: 7.8, minSize: 5.2, align: "right", direction: "ltr", fill: "#ffffff" },
+  { group: "Footer", path: "footer.internalNumber", label: "Internal number", cover: [435, 600.6, 486, 608.3], box: [436, 601, 484.5, 607.8], size: 7.2, minSize: 5.2, align: "right", direction: "ltr", scaleX: 0.96, fill: "#ffffff" },
   { group: "Footer", path: "footer.fileCreationDate", label: "File creation date", cover: [79.2, 627, 175, 634.8], box: [80, 627.4, 174.5, 634.2], size: 7.2, minSize: 5, align: "left", direction: "ltr", color: "#b3b3b3", fill: "#ffffff" },
-  { group: "Footer", path: "footer.signature", label: "Seller signature", cover: [449, 625.8, 493.7, 633.7], box: [450, 626.2, 493, 633], size: 7.8, minSize: 5.2, align: "right", direction: "rtl", fill: "#ffffff" },
+  { group: "Footer", path: "footer.signature", label: "Seller signature", cover: [449, 625.8, 501, 633.7], box: [450, 626.2, 499, 633], size: 5, minSize: 4.8, align: "right", direction: "rtl", scaleX: 0.8, fill: "#ffffff" },
 ];
 
 function getValue(data, path) {
@@ -275,8 +277,14 @@ function drawValue(context, value, field) {
   const [coverX0, coverY0, coverX1, coverY1] = field.cover;
   const [x0, y0, x1, y1] = field.box;
   context.save();
-  context.fillStyle = field.fill || "#ffffff";
-  context.fillRect(coverX0 * scale, coverY0 * scale, (coverX1 - coverX0) * scale, (coverY1 - coverY0) * scale);
+  if (field.drawBackground !== false) {
+    context.fillStyle = field.fill || "#ffffff";
+    context.fillRect(coverX0 * scale, coverY0 * scale, (coverX1 - coverX0) * scale, (coverY1 - coverY0) * scale);
+  }
+  if (field.drawText === false) {
+    context.restore();
+    return;
+  }
   context.beginPath();
   context.rect(x0 * scale, y0 * scale, (x1 - x0) * scale, (y1 - y0) * scale);
   context.clip();
@@ -286,20 +294,22 @@ function drawValue(context, value, field) {
 
   const displayValue = formatTaxInvoiceDisplayValue(value, field);
   const rawLines = field.multiline ? displayValue.split(/\r?\n/) : [displayValue];
+  const horizontalScale = field.scaleX || 1;
   const boxWidth = (x1 - x0) * scale;
+  const textWidth = boxWidth / horizontalScale;
   const desiredSize = field.size * scale;
   const minimumSize = field.minSize * scale;
-  const family = '"DejaVu Sans", Arial, sans-serif';
+  const family = `"${TAX_INVOICE_FONT_FAMILY}", Arial, sans-serif`;
   let fontSize = desiredSize;
   let lines = rawLines;
   while (true) {
     context.font = `${field.weight || "400"} ${fontSize}px ${family}`;
     lines = field.wrap
-      ? rawLines.flatMap((line) => wrapCanvasText(context, line, boxWidth, field))
+      ? rawLines.flatMap((line) => wrapCanvasText(context, line, textWidth, field))
       : rawLines;
     const fits = lines.every((line) => {
       context.direction = fieldDirection(line, field);
-      return context.measureText(line).width <= boxWidth;
+      return context.measureText(line).width <= textWidth;
     });
     if (fits || fontSize <= minimumSize) break;
     fontSize = Math.max(minimumSize, fontSize - 1);
@@ -310,55 +320,58 @@ function drawValue(context, value, field) {
   lines.forEach((line, index) => {
     const baseline = baselines[index] ?? (baselines[0] + (field.lineStep || 10.8) * index);
     context.direction = fieldDirection(line, field);
-    context.fillText(line, drawX, baseline * scale);
+    context.save();
+    context.translate(drawX, 0);
+    context.scale(horizontalScale, 1);
+    context.fillText(line, 0, baseline * scale);
+    context.restore();
   });
   context.restore();
 }
 
-export function removeTaxInvoiceWatermark(image) {
-  const canvas = document.createElement("canvas");
-  canvas.width = TAX_INVOICE_PAGE.widthPx;
-  canvas.height = TAX_INVOICE_PAGE.heightPx;
-  const context = canvas.getContext("2d");
-  context.drawImage(image, 0, 0, canvas.width, canvas.height);
-  const scale = TAX_INVOICE_PAGE.scale;
-  const yStart = Math.floor(380 * scale);
-  const yEnd = Math.ceil(464 * scale);
-  for (let y = yStart; y < yEnd; y += 1) {
-    const pageY = y / scale;
-    const centerX = 265 + (pageY - 389) * 0.75;
-    const left = (centerX - 34) * scale;
-    const right = (centerX + 34) * scale;
-    context.fillStyle = "#ffffff";
-    context.fillRect(left, y, right - left, 1);
-  }
-
-  // Restore the table rules over the removed mark. Editable cells in the strip
-  // are redrawn from the invoice data model immediately after this background.
-  context.fillStyle = "#e0e0e0";
-  for (const yPt of [408.5, 437.3, 466.1]) {
-    context.fillRect(76 * scale, yPt * scale, (517 - 76) * scale, 0.35 * scale);
-  }
-  for (const xPt of [268.6, 319.0]) {
-    context.fillRect(xPt * scale, 357.8 * scale, 0.35 * scale, (466.1 - 357.8) * scale);
-  }
-  return canvas;
-}
-
-export function renderTaxInvoicePage(context, image, data, watermarkMask) {
+export function renderTaxInvoicePage(context, image, data) {
   context.clearRect(0, 0, TAX_INVOICE_PAGE.widthPx, TAX_INVOICE_PAGE.heightPx);
   context.drawImage(image, 0, 0, TAX_INVOICE_PAGE.widthPx, TAX_INVOICE_PAGE.heightPx);
-  drawTaxInvoiceFields(context, data);
+  const { x, y, width, height } = TAX_INVOICE_TABLE_CLEAR_AREA;
+  context.fillStyle = "#ffffff";
+  context.fillRect(x, y, width, height);
+  drawTaxInvoiceFieldBackgrounds(context, data);
 }
 
-export function renderTaxInvoiceOverlay(context, data, watermarkMask) {
+export function renderTaxInvoiceOverlay(context, data) {
   context.clearRect(0, 0, TAX_INVOICE_PAGE.widthPx, TAX_INVOICE_PAGE.heightPx);
-  drawTaxInvoiceFields(context, data);
+  drawTaxInvoiceFieldText(context, data);
 }
 
-function drawTaxInvoiceFields(context, data) {
+export function renderTaxInvoiceTable(table, data) {
+  for (const cell of table.querySelectorAll("[data-tax-invoice-path]")) {
+    const field = TAX_INVOICE_FIELDS.find((entry) => entry.path === cell.dataset.taxInvoicePath);
+    if (!field) {
+      throw new Error(`Unknown tax invoice table field: ${cell.dataset.taxInvoicePath}`);
+    }
+    const value = String(getValue(data, cell.dataset.taxInvoicePath) ?? "");
+    cell.textContent = value;
+    cell.dir = fieldDirection(value, field);
+    if (cell.dir === "rtl") {
+      cell.lang = "ar";
+    } else {
+      cell.removeAttribute("lang");
+    }
+  }
+}
+
+function drawTaxInvoiceFieldBackgrounds(context, data) {
   for (const field of TAX_INVOICE_FIELDS) {
-    drawValue(context, getValue(data, field.path), field);
+    drawValue(context, getValue(data, field.path), { ...field, drawBackground: true, drawText: false });
+  }
+}
+
+function drawTaxInvoiceFieldText(context, data) {
+  for (const field of TAX_INVOICE_FIELDS) {
+    if (field.path.startsWith("items.") || field.path.startsWith("summary.")) {
+      continue;
+    }
+    drawValue(context, getValue(data, field.path), { ...field, drawBackground: false });
   }
 }
 
