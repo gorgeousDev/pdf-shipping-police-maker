@@ -9,8 +9,9 @@
 - Added output checks for one page, exact 596 × 842 pt page size, and non-transparent overlay pixels outside active field masks.
 - Added explicit UI text that the QR payload is unverified and the code will not change with edited values.
 - Numeric-only amount fields shape typed Western digits as Arabic-Indic digits at render time. Mixed text, dates, quantities with units, IDs, and codes keep typed digits.
+- The electronic invoice ID mask extends past the source's final digit to fully cover its right edge; the text layout box and adjacent fixed colon remain unchanged.
 - HTML table headers and values use the reference DejaVu Sans face at a fixed 4.8 pt-equivalent size; headers are bold and right-aligned, long values clip within their fixed cells, and item descriptions retain their measured line breaks. Seller/buyer/footer text fields use measured source boxes and configured size limits.
-- Currency units in table headers and totals are isolated with RTL direction so their parentheses keep the correct order in the PDF capture.
+- Currency units in table headers and totals use an LTR isolate to keep their parentheses in the correct order in the PDF capture.
 - Submission and issue timestamps apply LRI/PDI isolates at render time so the visual order matches the reference's time-then-date layout.
 - The reference artwork outside the table and QR are retained; the table raster and watermark are cleared and replaced by the HTML table and CSS text.
 

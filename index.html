@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="Edit a shipping label, tax invoice, or S&A receipt and export a PDF.">
     <title>Shipping Label, Invoice &amp; Receipt Editor</title>
-    <link rel="stylesheet" href="src/styles.css?v=30">
+    <link rel="stylesheet" href="src/styles.css?v=34">
   </head>
   <body>
     <main class="app">
@@ -106,8 +106,8 @@
               </colgroup>
               <thead>
                 <tr class="tax-invoice-grid-header">
-                  <th scope="col">قيمة المبيعات <bdi dir="rtl">(ج.م)</bdi></th>
-                  <th scope="col">سعر الوحدة <bdi dir="rtl">(ج.م)</bdi></th>
+                  <th scope="col">قيمة المبيعات <bdi dir="ltr">(ج.م)</bdi></th>
+                  <th scope="col">سعر الوحدة <bdi dir="ltr">(ج.م)</bdi></th>
                   <th scope="col">الكمية/<br>نوع الوحدة</th>
                   <th scope="col">الوصف</th>
                   <th scope="col">كود الصنف</th>
@@ -140,22 +140,22 @@
                   <td data-tax-invoice-path="items.2.name"></td>
                 </tr>
                 <tr class="tax-invoice-grid-summary">
-                  <td data-tax-invoice-path="summary.salesTotal"></td><td>إجمالي المبيعات <bdi dir="rtl">(ج.م)</bdi></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td>
+                  <td data-tax-invoice-path="summary.salesTotal"></td><td>إجمالي المبيعات <bdi dir="ltr">(ج.م)</bdi></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td>
                 </tr>
                 <tr class="tax-invoice-grid-summary">
-                  <td data-tax-invoice-path="summary.discountTotal"></td><td>إجمالي الخصم <bdi dir="rtl">(ج.م)</bdi></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td>
+                  <td data-tax-invoice-path="summary.discountTotal"></td><td>إجمالي الخصم <bdi dir="ltr">(ج.م)</bdi></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td>
                 </tr>
                 <tr class="tax-invoice-grid-summary">
-                  <td data-tax-invoice-path="summary.itemDiscountTotal"></td><td>إجمالي خصم الصنف <bdi dir="rtl">(ج.م)</bdi></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td>
+                  <td data-tax-invoice-path="summary.itemDiscountTotal"></td><td>إجمالي خصم الصنف <bdi dir="ltr">(ج.م)</bdi></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td>
                 </tr>
                 <tr class="tax-invoice-grid-summary">
-                  <td data-tax-invoice-path="summary.vat"></td><td>ضريبة القيمة المضافة <bdi dir="rtl">(ج.م)</bdi></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td>
+                  <td data-tax-invoice-path="summary.vat"></td><td>ضريبة القيمة المضافة <bdi dir="ltr">(ج.م)</bdi></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td>
                 </tr>
                 <tr class="tax-invoice-grid-summary">
-                  <td data-tax-invoice-path="summary.additionalInvoiceDiscount"></td><td>خصم الفاتورة الإضافي <bdi dir="rtl">(ج.م)</bdi></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td>
+                  <td data-tax-invoice-path="summary.additionalInvoiceDiscount"></td><td>خصم الفاتورة الإضافي <bdi dir="ltr">(ج.م)</bdi></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td>
                 </tr>
                 <tr class="tax-invoice-grid-summary">
-                  <td data-tax-invoice-path="summary.grandTotal"></td><td>إجمالي المبلغ <bdi dir="rtl">(ج.م)</bdi></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td>
+                  <td data-tax-invoice-path="summary.grandTotal"></td><td>إجمالي المبلغ <bdi dir="ltr">(ج.م)</bdi></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td><td class="tax-invoice-grid-empty"></td>
                 </tr>
               </tbody>
             </table>
@@ -174,6 +174,6 @@
     <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <script type="module" src="src/app.js?v=41"></script>
+    <script type="module" src="src/app.js?v=46"></script>
   </body>
 </html>

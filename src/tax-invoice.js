@@ -118,7 +118,7 @@ const TAX_INVOICE_SOURCE_DATA = {
   },
   footer: {
     internalNumber: "GLETH-000000090",
-    fileCreationDate: "22/11/26 PM 01:26 UTC+02:00",
+    fileCreationDate: "30/9/26 PM 01:26 UTC+02:00",
     signature: "اس اند ايه للتجاره",
   },
 };
@@ -136,7 +136,7 @@ export const TAX_INVOICE_FIELDS = [
   { group: "Seller", path: "seller.activityCode", label: "Seller tax activity code", cover: [207.8, 148.4, 225, 156.2], box: [208.5, 149, 224.2, 155.8], size: 4.8, minSize: 4.5, align: "right", direction: "ltr", fill: "#f9f9f9" },
   { group: "Seller", path: "seller.address", label: "Seller address", multiline: true, cover: [319, 159.2, 513, 167.1], box: [320, 159.6, 512.5, 166.5], size: 5, minSize: 4.4, align: "right", direction: "rtl", scaleX: 0.93, fill: "#f9f9f9" },
   { group: "Seller", path: "seller.locality", label: "Seller locality", cover: [464.5, 170.2, 513, 177.5], box: [465, 170.7, 512.5, 177], size: 5.1, minSize: 4.6, align: "right", direction: "rtl", scaleX: 0.97, fill: "#f9f9f9" },
-  { group: "References", path: "references.electronicId", label: "Electronic invoice ID", cover: [359, 217.1, 469.3, 224.7], box: [360, 217.6, 468.5, 224], size: 4.3, minSize: 4.3, align: "right", direction: "ltr", scaleX: 1.1, fill: "#ffffff" },
+  { group: "References", path: "references.electronicId", label: "Electronic invoice ID", cover: [359, 217.1, 471.5, 224.7], box: [360, 217.6, 468.5, 224], size: 4.3, minSize: 4.3, align: "right", direction: "ltr", scaleX: 1.1, fill: "#ffffff" },
   { group: "References", path: "references.provisionalExportInvoiceNumber", label: "Provisional export invoice number", cover: [76, 216.9, 190, 224.8], box: [77, 217.5, 189, 224], size: 7.5, minSize: 5, align: "left", direction: "ltr", fill: "#ffffff" },
   { group: "References", path: "references.salesOrderReference", label: "Sales order reference", cover: [76, 227.8, 210, 235.5], box: [77, 228.2, 209, 234.8], size: 7.5, minSize: 5, align: "left", direction: "ltr", fill: "#ffffff" },
   { group: "References", path: "references.purchaseOrderReference", label: "Purchase order reference", cover: [266, 227.8, 466, 235.5], box: [267, 228.2, 465, 234.8], size: 7.5, minSize: 5, align: "right", direction: "rtl", fill: "#ffffff" },
@@ -182,7 +182,7 @@ export const TAX_INVOICE_FIELDS = [
     fill: "#ffffff",
   })),
   { group: "Footer", path: "footer.internalNumber", label: "Internal number", cover: [435, 600.6, 486, 608.3], box: [436, 601, 484.5, 607.8], size: 7.2, minSize: 5.2, align: "right", direction: "ltr", scaleX: 0.96, fill: "#ffffff" },
-  { group: "Footer", path: "footer.fileCreationDate", label: "File creation date", cover: [79.2, 627, 175, 634.8], box: [80, 627.4, 174.5, 634.2], size: 7.2, minSize: 5, align: "left", direction: "ltr", color: "#b3b3b3", fill: "#ffffff" },
+  { group: "Footer", path: "footer.fileCreationDate", label: "File creation date", cover: [79.2, 627, 218.2, 634.8], box: [80, 627.4, 217.3, 634.2], size: 4.6, minSize: 4.6, align: "right", direction: "rtl", bidiIsolate: true, color: "#b3b3b3", fill: "#ffffff" },
   { group: "Footer", path: "footer.signature", label: "Seller signature", cover: [449, 625.8, 501, 633.7], box: [450, 626.2, 499, 633], size: 5, minSize: 4.8, align: "right", direction: "rtl", scaleX: 0.8, fill: "#ffffff" },
 ];
 
@@ -199,6 +199,13 @@ function setValue(data, path, value) {
 
 export function formatTaxInvoiceDisplayValue(value, field) {
   const text = String(value);
+  if (field.path === "footer.fileCreationDate") {
+    const match = text.match(/^(\d{1,2}\/\d{1,2}\/\d{2})\s+(AM|PM)\s+(\d{2}:\d{2})\s+(?:UTC)?([+-]\d{2}:\d{2})$/u);
+    if (match) {
+      const [, date, meridiem, time, timezone] = match;
+      return `\u2067تاريخ إنشاء الملف:\u2069 \u2066${date}\u2069 \u2066${time} ${meridiem}\u2069 \u2067التوقيت العالمي\u2069 \u2066${timezone}\u2069`;
+    }
+  }
   const numericOnly = /^[0-9٠-٩\s.,+-]+$/u.test(text);
   const converted = field.digitStyle === "arabic-indic" && numericOnly
     ? text.replace(/[0-9]/g, (digit) => "٠١٢٣٤٥٦٧٨٩"[Number(digit)])

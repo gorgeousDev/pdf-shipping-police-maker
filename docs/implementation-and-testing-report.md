@@ -6,6 +6,7 @@
 - Kept unedited export byte-for-byte identical to the source PDF.
 - Separated measured white-mask bounds from safe text-layout boxes. All masks are drawn before replacement content, so later masks cannot erase earlier text. The edited PDF embeds the same full-page Canvas composite shown in the preview.
 - Arabic input uses `dir="rtl"` and Arabic language metadata. Canvas drawing sets RTL direction while keeping the lines physically left-aligned.
+- Parenthesized spans in RTL replacement fields are isolated during drawing so punctuation retains its typed order in preview and PDF export.
 - Recipient address lines 1 and 2 use 33 px bold DejaVu Sans, the closest installed Arabic-capable face in a pixel comparison against the source phrase. Baselines are calibrated to y=775 and y=814 px.
 - Added an editable label ID. The source reads `JEG000547344825` (JEG, not JEQ); replacing the ID redraws its printed value and both Code 128 barcodes.
 - Added a right-aligned editable footer date/time field at the measured source position.

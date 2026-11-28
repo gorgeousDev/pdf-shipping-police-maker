@@ -29,7 +29,7 @@ import {
   taxInvoiceHasChanges,
   verifyTaxInvoiceOverlay,
   TAX_INVOICE_PAGE,
-} from "./tax-invoice.js?v=25";
+} from "./tax-invoice.js?v=31";
 
 const PAGE = { widthPt: 215, heightPt: 369, widthPx: 895, heightPx: 1537 };
 const TAX_INVOICE_EXPORT_BORDER_WIDTH_PT = 0.15;
@@ -542,11 +542,16 @@ function fontFor(field, size = field.fontSize) {
   return `${weight} ${size}px ${family}, sans-serif`;
 }
 
+function isolateParenthesizedText(value) {
+  return value.replace(/\([^()\r\n]*\)/gu, "\u2066$&\u2069");
+}
+
 function drawSingleLine(field, value, targetContext) {
   const [textX0, textY0, textX1, textY1] = field.textBox || field.cover;
   const width = textX1 - textX0;
 
   if (!value) return;
+  const renderValue = field.kind === "arabic" ? isolateParenthesizedText(value) : value;
 
   targetContext.save();
   targetContext.beginPath();
@@ -562,7 +567,7 @@ function drawSingleLine(field, value, targetContext) {
   const availableDescent = textY1 - field.baseline;
   for (let attempt = 0; attempt < 3; attempt += 1) {
     targetContext.font = fontFor(field, fontSize);
-    const metrics = targetContext.measureText(value);
+    const metrics = targetContext.measureText(renderValue);
     let scale = Math.min(1, width / metrics.width);
     if (metrics.actualBoundingBoxAscent > availableAscent) {
       scale = Math.min(scale, availableAscent / metrics.actualBoundingBoxAscent);
@@ -580,7 +585,7 @@ function drawSingleLine(field, value, targetContext) {
     : field.align === "center"
       ? (textX0 + textX1) / 2
       : textX0;
-  targetContext.fillText(value, textX, field.baseline);
+  targetContext.fillText(renderValue, textX, field.baseline);
   targetContext.restore();
 }
 
